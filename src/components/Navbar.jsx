@@ -4,7 +4,7 @@ import { Search, Upload, Menu, X, Sparkles } from 'lucide-react';
 // ─────────────────────────────────────────────────────────────────
 // Navbar
 // Props:
-//   onSearch {function} – called with the search query string
+//   onSearch {function} – called with the search query stringff
 // ─────────────────────────────────────────────────────────────────
 const Navbar = ({ onSearch }) => {
   const [menuOpen, setMenuOpen]           = useState(false);
