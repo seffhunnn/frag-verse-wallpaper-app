@@ -1,19 +1,3 @@
-# 🌌 Frag Verse
-
-**Frag Verse** is a premium, high-performance wallpaper discovery application built with **React**, **Tailwind CSS**, and the **Unsplash API**. It offers a seamless experience for finding and downloading stunning 4K wallpapers across various categories like Gaming, Anime, Nature, and more.
-
-## ✨ Features
-
-- **High-Resolution Discovery**: Fetch the latest and most popular wallpapers directly from Unsplash.
-- **Infinite Scroll**: Seamlessly browse through thousands of images without manual pagination.
-- **Smart Search**: Dual search entry points in the Navbar and Hero section.
-- **Category Filtering**: Quick access to specific themes (Gaming, Anime, Nature, etc.).
-- **Premium UI**: Dark-themed, glassmorphic design with smooth micro-animations and purple glow effects.
-- **One-Click Downloads**: Save high-resolution (Full/Raw) images directly to your device.
-- **Fullscreen Preview**: Immersive modal view with author information and resolution details.
-
----
-
 ## 🚀 Getting Started
 
 To run **Frag Verse** locally, follow these steps:
