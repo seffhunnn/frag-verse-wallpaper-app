@@ -26,12 +26,12 @@ const normalizePhoto = (photo) => ({
   category:    photo.topic_submissions
                  ? Object.keys(photo.topic_submissions)[0] ?? 'General'
                  : 'General',
-  resolution:  photo.width >= 3840 ? '4K' : photo.width >= 2560 ? '2K' : photo.width >= 1920 ? '1440p' : '1080p',
   likes:       photo.likes ?? 0,
   downloads:   photo.downloads ?? 0,
   color:       photo.color ?? '#1a1a2e',
   width:       photo.width,
   height:      photo.height,
+  source:      'unsplash'
 });
 
 // ── 1. Fetch trending / editorial wallpapers ───────────────────────

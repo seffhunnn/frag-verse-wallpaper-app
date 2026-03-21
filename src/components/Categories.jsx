@@ -10,20 +10,20 @@ import CategoryCard from './CategoryCard';
 const CATEGORIES = [
   { label: 'All'      },
   { label: 'Gaming'   },
-  { label: 'Anime'    },
+  { label: 'Formula 1' },
+  { label: 'Aesthetic' },
   { label: 'Nature'   },
   { label: 'Cars'     },
   { label: 'Space'    },
   { label: 'Abstract' },
   { label: 'City'     },
-  { label: 'Ocean'    },
 ];
 
 const Categories = ({ activeCategory = null, onSelect }) => {
   return (
-    <section className="py-6 animate-fade-in">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex w-full">
+    <section className="pt-0 pb-1 mb-4 animate-fade-in border-b border-white/5">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-9">
+        <div className="flex w-full items-center gap-1 overflow-x-auto hide-scrollbar scroll-smooth py-2">
           {CATEGORIES.map((cat) => (
             <CategoryCard
               key={cat.label}

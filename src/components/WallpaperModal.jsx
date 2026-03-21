@@ -47,13 +47,14 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
   const {
     id,
     image,
+    thumb,
     fullImage,
     title     = 'Untitled',
     author    = 'Unknown',
     authorImage,
     authorLink,
     downloads = 0,
-    resolution = '4K',
+    source,
   } = wallpaper;
 
   const handleOverlayClick = (e) => {
@@ -73,14 +74,14 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
     >
       {/* Modal panel */}
       <div
-        className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden bg-dark-800 border border-purple-500/30 shadow-[0_0_40px_rgba(124,58,237,0.3),0_0_80px_rgba(124,58,237,0.1)] animate-slide-up"
+        className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden bg-dark-800 border border-purple-900/20  animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Top bar ── */}
         <div className="flex items-center justify-between px-5 py-3 bg-dark-800 border-b border-purple-500/15 flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             {/* Author avatar */}
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0 overflow-hidden border border-white/10">
+            <div className="w-8 h-8 rounded-full bg-dark-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
               {authorImage ? (
                 <img src={authorImage} alt={author} className="w-full h-full object-cover" />
               ) : (
@@ -118,7 +119,7 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
               className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/30"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Download {resolution}</span>
+              <span className="hidden sm:inline">Download</span>
               <span className="sm:hidden">Save</span>
             </button>
 
@@ -134,9 +135,15 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
         </div>
 
         {/* ── Image area ── */}
-        <div className="flex-1 overflow-hidden flex items-center justify-center bg-black/40 min-h-0">
+        <div className="relative flex-1 overflow-hidden flex items-center justify-center bg-black/40 min-h-0">
+          {source && (
+            <div className={`absolute top-4 left-4 px-3 py-1 rounded-xl text-white font-bold text-[11px] uppercase tracking-wider backdrop-blur-md z-[20] shadow-lg
+              ${source === 'unsplash' ? 'bg-blue-600/90' : 'bg-green-600/90'}`}>
+              {source === 'unsplash' ? 'Unsplash' : 'FragVerse'}
+            </div>
+          )}
           <img
-            src={image}
+            src={image || thumb}
             alt={title}
             className="w-full h-full object-contain max-h-[75vh]"
             style={{ objectFit: 'contain' }}
@@ -146,12 +153,6 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
         {/* ── Bottom info bar ── */}
         <div className="px-5 py-3 bg-dark-800 border-t border-purple-500/15 flex items-center justify-between text-xs text-slate-500 flex-shrink-0">
           <span>Click outside or press <kbd className="bg-white/10 text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-mono">Esc</kbd> to close</span>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <Download className="w-3 h-3" /> {downloads.toLocaleString()}
-            </span>
-            <span className="font-semibold text-slate-400">{resolution}</span>
-          </div>
         </div>
       </div>
     </div>

@@ -21,34 +21,14 @@ const WallpaperGrid = ({
   title      = 'Trending Wallpapers',
   subtitle   = 'Hand-picked by the community',
   onCardClick,
+  onDeleteWallpaper,
+  onToggleFavorite,
+  favoriteIds = [],
   loadMore,
   hasMore,
+  isAdmin = false,
+  lastWallpaperRef,
 }) => {
-  const observerTarget = useRef(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting && hasMore && !loading) {
-          loadMore();
-        }
-      },
-      { 
-        threshold: 0.1,
-        rootMargin: '200px' // Trigger load 200px before reaching the bottom
-      }
-    );
-
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
-
-    return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current);
-      }
-    };
-  }, [loadMore, hasMore, loading]);
 
   const skeletonCount = 8; // Fewer for appending
 
@@ -62,12 +42,6 @@ const WallpaperGrid = ({
             <h2 className="text-xl font-bold text-white">{title}</h2>
             <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
           </div>
-          <select className="bg-dark-700 border border-white/8 text-slate-300 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500/50 cursor-pointer">
-            <option>Trending</option>
-            <option>Newest</option>
-            <option>Most Liked</option>
-            <option>Most Downloaded</option>
-          </select>
         </div>
 
         {/* ── Error state ── */}
@@ -81,8 +55,8 @@ const WallpaperGrid = ({
 
         {/* ── Grid: cards and skeletons ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {/* Initial loading skeletons */}
-          {loading && wallpapers.length === 0 && 
+          {/* Initial loading skeletons (Show if fetching first batch or searching) */}
+          {loading && (wallpapers.length < 5) && 
             Array.from({ length: 12 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))
@@ -92,9 +66,14 @@ const WallpaperGrid = ({
           {wallpapers.map((wallpaper, i) => (
             <WallpaperCard
               key={`${wallpaper.id}-${i}`} // Ensure unique keys even if id repeats
+              ref={i === wallpapers.length - 1 ? lastWallpaperRef : null}
               wallpaper={wallpaper}
               index={i}
               onCardClick={onCardClick}
+              onDelete={onDeleteWallpaper}
+              onToggleFavorite={onToggleFavorite}
+              isFavorited={favoriteIds.includes(wallpaper.id)}
+              isAdmin={isAdmin}
             />
           ))}
 
@@ -115,24 +94,6 @@ const WallpaperGrid = ({
           </div>
         )}
 
-        {/* ── Intersection Observer Target ── */}
-        <div 
-          ref={observerTarget} 
-          className="w-full h-32 mt-8 flex flex-col items-center justify-center border-t border-white/5"
-        >
-          {loading && wallpapers.length > 0 && (
-            <div className="flex flex-col items-center gap-3 text-purple-400">
-               <div className="w-8 h-8 border-3 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-               <span className="text-sm font-medium animate-pulse">Fetching more wallpapers...</span>
-            </div>
-          )}
-          {!hasMore && wallpapers.length > 0 && (
-            <div className="flex flex-col items-center gap-2 text-slate-500">
-              <span className="text-xl">🌌</span>
-              <p className="text-sm italic font-medium">You've reached the end of the galaxy</p>
-            </div>
-          )}
-        </div>
       </div>
     </section>
   );

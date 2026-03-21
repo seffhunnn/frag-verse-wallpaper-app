@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Download, Maximize2 } from 'lucide-react';
+import { useState, forwardRef } from 'react';
+import { Download, Maximize2, Trash2, Loader2 } from 'lucide-react';
 
 // Fallback gradient palette when image is unavailable
 const GRADIENTS = [
@@ -38,10 +38,7 @@ const downloadWallpaper = async (url, filename) => {
 // ─────────────────────────────────────────────────────────────────
 // WallpaperCard
 // Props:
-//   wallpaper {object}  – normalized Unsplash photo object
-//   index     {number}  – grid position (gradient fallback)
-// ─────────────────────────────────────────────────────────────────
-const WallpaperCard = ({ wallpaper = {}, index = 0, onCardClick }) => {
+const WallpaperCard = forwardRef(({ wallpaper = {}, index = 0, onCardClick, onDelete, isAdmin = false }, ref) => {
   const {
     id,
     image,
@@ -49,10 +46,10 @@ const WallpaperCard = ({ wallpaper = {}, index = 0, onCardClick }) => {
     title      = 'Untitled',
     author      = 'Unknown',
     authorImage,
-    resolution = '4K',
     likes      = 0,
     downloads  = 0,
     authorLink,
+    source,
   } = wallpaper;
 
   const [downloading, setDownloading] = useState(false);
@@ -70,19 +67,25 @@ const WallpaperCard = ({ wallpaper = {}, index = 0, onCardClick }) => {
     if (onCardClick) onCardClick(wallpaper);
   };
 
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (onDelete) onDelete(wallpaper);
+  };
+
   return (
     <div
+      ref={ref}
       onClick={handleCardClick}
-      className="group relative rounded-2xl overflow-hidden card-hover cursor-pointer bg-dark-700 border border-transparent hover:border-purple-500/40 hover:shadow-[0_0_20px_rgba(124,58,237,0.35),0_0_40px_rgba(124,58,237,0.15)]"
+      style={{ transform: 'translateZ(0)' }}
+      className="group relative rounded-2xl overflow-hidden card-hover cursor-pointer bg-dark-700 border border-transparent"
     >
-
       {/* ── Image / Placeholder ── */}
-      <div className="w-full aspect-[16/10] relative overflow-hidden">
+      <div className="w-full aspect-[16/10] relative overflow-hidden bg-black">
         {image ? (
           <img
             src={image}
             alt={title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
             loading="lazy"
           />
         ) : (
@@ -91,13 +94,16 @@ const WallpaperCard = ({ wallpaper = {}, index = 0, onCardClick }) => {
           </div>
         )}
 
-        {/* Resolution badge */}
-        <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-xs text-white font-bold px-2 py-0.5 rounded-lg border border-white/10">
-          {resolution}
-        </div>
+        {/* Source badge (Moved to left) */}
+        {source && (
+          <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-lg text-white font-bold text-[10px] uppercase tracking-wider backdrop-blur-md z-[15] shadow-sm
+            ${source === 'unsplash' ? 'bg-blue-600/80 shadow-blue-500/20' : 'bg-green-600/80 shadow-green-500/20'}`}>
+            {source === 'unsplash' ? 'Unsplash' : 'FragVerse'}
+          </div>
+        )}
 
         {/* ── Hover overlay ── */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+        <div className="absolute inset-[-1px] bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 z-10">
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
 
@@ -118,32 +124,42 @@ const WallpaperCard = ({ wallpaper = {}, index = 0, onCardClick }) => {
 
             </div>
 
-            {/* Open full-res in new tab */}
-            <button
-              onClick={(e) => { e.stopPropagation(); window.open(fullImage || image, '_blank', 'noopener,noreferrer'); }}
-              title="View full resolution"
-              className="bg-white/15 backdrop-blur-sm hover:bg-white/25 text-white p-1.5 rounded-lg transition-all duration-200 border border-white/10"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-            </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); window.open(fullImage || image, '_blank', 'noopener,noreferrer'); }}
+                title="View full resolution"
+                className="bg-white/15 backdrop-blur-sm hover:bg-white/25 text-white p-1.5 rounded-lg transition-all duration-200 border border-white/10"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Delete button (Supabase + Admin only) */}
+              {isAdmin && source === 'user' && (
+                <button
+                  onClick={handleDelete}
+                  title="Delete wallpaper"
+                  className="bg-red-500/20 backdrop-blur-sm border border-red-500/30 text-red-100 p-1.5 rounded-lg transition-all duration-200 hover:bg-red-500 hover:scale-110 ml-auto"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
       {/* ── Card footer ── */}
       <div className="px-3 py-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex-shrink-0 flex items-center justify-center overflow-hidden border border-white/10">
+          <div className="w-6 h-6 rounded-full bg-dark-600 flex-shrink-0 flex items-center justify-center overflow-hidden">
             {authorImage ? (
               <img src={authorImage} alt={author} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-[9px] font-bold text-white">
+              <span className="text-[11px] font-bold text-white">
                 {author.charAt(0).toUpperCase()}
               </span>
             )}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-slate-200 truncate leading-tight capitalize">
+            <p className="text-sm font-semibold text-slate-200 truncate leading-tight capitalize">
               {title || 'Untitled'}
             </p>
             {authorLink ? (
@@ -151,19 +167,19 @@ const WallpaperCard = ({ wallpaper = {}, index = 0, onCardClick }) => {
                 href={authorLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[10px] text-slate-500 hover:text-purple-400 truncate leading-tight transition-colors block"
+                className="text-xs text-slate-500 hover:text-purple-400 truncate leading-tight transition-colors block"
                 onClick={(e) => e.stopPropagation()}
               >
                 {author}
               </a>
             ) : (
-              <p className="text-[10px] text-slate-500 truncate leading-tight">{author}</p>
+              <p className="text-xs text-slate-500 truncate leading-tight">{author}</p>
             )}
           </div>
         </div>
       </div>
     </div>
   );
-};
+});
 
 export default WallpaperCard;

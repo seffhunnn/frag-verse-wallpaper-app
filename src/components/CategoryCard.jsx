@@ -1,15 +1,34 @@
+import { motion } from 'framer-motion';
+
 const CategoryCard = ({ label, active, onClick }) => {
   return (
     <button
       onClick={onClick}
-      className={`flex-1 py-2.5 text-sm font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer
+      className={`relative flex-1 pt-4 pb-2 px-2 text-[15px] transition-colors duration-300 cursor-pointer group
         ${active
-          ? 'text-gradient border-b-2 border-purple-500'
-          : 'text-slate-500 hover:text-slate-200 border-b-2 border-transparent'
+          ? 'text-white font-extrabold scale-110'
+          : 'text-slate-500 hover:text-slate-200 font-medium'
         }
       `}
     >
-      {label}
+      <span className="relative z-10 transition-transform duration-300">
+        {label}
+      </span>
+      
+      {/* Animated Sliding Underline */}
+      {active && (
+        <motion.div 
+          layoutId="activeCategoryUnderline"
+          className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500"
+          initial={false}
+          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+        />
+      )}
+
+      {/* Hover hint */}
+      {!active && (
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10 scale-x-0 group-hover:scale-x-50 transition-transform duration-300 opacity-0 group-hover:opacity-100" />
+      )}
     </button>
   );
 };

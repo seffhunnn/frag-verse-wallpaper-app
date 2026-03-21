@@ -1,13 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, Upload, Menu, X, Sparkles } from 'lucide-react';
+import { Search, Upload, Menu, X, Sparkles, User, LogOut, ChevronDown, ImagePlus } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────
 // Navbar
 // Props:
 //   onSearch {function} – called with the search query stringff
 // ─────────────────────────────────────────────────────────────────
-const Navbar = ({ onSearch }) => {
+// ─── Predefined avatar gradients ──────────────────────────────────
+const AVATAR_GRADIENTS = [
+  'from-purple-600 to-pink-600',
+  'from-blue-600 to-cyan-600',
+  'from-orange-600 to-red-600',
+  'from-emerald-600 to-teal-600',
+  'from-indigo-600 to-violet-600',
+  'from-rose-600 to-pink-600'
+];
+
+const Navbar = ({ onSearch, onUploadClick, onMyUploadsClick, onLogout, user }) => {
   const [menuOpen, setMenuOpen]           = useState(false);
+  const [profileOpen, setProfileOpen]    = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [inputValue, setInputValue]       = useState('');
   const [showSearch, setShowSearch]       = useState(false);
@@ -44,6 +55,17 @@ const Navbar = ({ onSearch }) => {
       if (onSearch) onSearch(inputValue.trim());
     }
   };
+
+  // Avatar Helpers
+  const avatarLetter = user ? (user.name || user.email || 'U').charAt(0).toUpperCase() : 'U';
+  const avatarGradient = user ? (() => {
+    const idStr = user.id || 'default';
+    let hash = 0;
+    for (let i = 0; i < idStr.length; i++) {
+      hash = idStr.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length];
+  })() : AVATAR_GRADIENTS[0];
 
   return (
     <nav className="sticky top-0 z-50 glass border-b border-white/5">
@@ -94,13 +116,72 @@ const Navbar = ({ onSearch }) => {
 
           {/* Right Actions */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <button className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/30">
-              <Upload className="w-4 h-4" />
-              Upload
-            </button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-200 ring-2 ring-purple-500/30">
-              <span className="text-xs font-bold text-white">U</span>
-            </div>
+            {user ? (
+              <div className="relative">
+                <div 
+                  className="flex items-center gap-2 bg-dark-700/50 hover:bg-dark-600 border border-white/8 rounded-2xl px-2 py-1.5 cursor-pointer transition-all duration-200 group"
+                  onClick={() => setProfileOpen(!profileOpen)}
+                >
+                  <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center ring-2 ring-purple-500/20 group-hover:ring-purple-500/40 transition-all overflow-hidden shadow-lg`}>
+                    <span className="text-[11px] font-bold text-white uppercase">{avatarLetter}</span>
+                  </div>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-transform duration-300 ${profileOpen ? 'rotate-180' : ''}`} />
+                </div>
+
+                {/* Profile Dropdown */}
+                {profileOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setProfileOpen(false)}></div>
+                    <div className="absolute right-0 mt-2 w-48 bg-[#0e0e15]/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl py-2 z-20 overflow-hidden animate-scale-in origin-top-right">
+                      <div className="px-4 py-2 border-b border-white/5 mb-1">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center truncate">
+                          {user.email || 'Welcome Back'}
+                        </p>
+                      </div>
+                      {user && (
+                        <>
+                          <button 
+                            onClick={() => { onMyUploadsClick(); setProfileOpen(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left"
+                          >
+                            <ImagePlus className="w-4 h-4 text-purple-400" />
+                            My Uploads
+                          </button>
+                          <button 
+                            onClick={() => { onUploadClick(); setProfileOpen(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left"
+                          >
+                            <Upload className="w-4 h-4 text-emerald-400" />
+                            Upload New
+                          </button>
+                        </>
+                      )}
+                      <div className="border-t border-white/5 my-1"></div>
+                      <button 
+                        onClick={() => { onLogout(); setProfileOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all text-left"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Log Out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : null}
+
+            {/* Upload Button (Admin Only) */}
+            {user && (
+              <button
+                onClick={onUploadClick}
+                className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/30"
+              >
+                <Upload className="w-4 h-4" />
+                Upload
+              </button>
+            )}
+
+
             <button
               className="sm:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -113,10 +194,31 @@ const Navbar = ({ onSearch }) => {
         {/* Mobile Menu */}
         {menuOpen && (
           <div className="sm:hidden pb-4 animate-slide-up">
-            <button className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl mt-2">
-              <Upload className="w-4 h-4" />
-              Upload Wallpaper
-            </button>
+            {user && (
+              <div className="flex flex-col gap-2 mt-2">
+                <button
+                  onClick={() => { onMyUploadsClick(); setMenuOpen(false); }}
+                  className="w-full flex items-center justify-center gap-2 bg-dark-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl border border-white/5"
+                >
+                  <ImagePlus className="w-4 h-4 text-purple-400" />
+                  My Uploads
+                </button>
+                <button
+                  onClick={() => { onUploadClick(); setMenuOpen(false); }}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload Wallpaper
+                </button>
+                <button
+                  onClick={() => { onLogout(); setMenuOpen(false); }}
+                  className="w-full flex items-center justify-center gap-2 bg-red-500/10 text-red-400 text-sm font-medium px-4 py-2.5 rounded-xl border border-red-500/10"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Log Out
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
