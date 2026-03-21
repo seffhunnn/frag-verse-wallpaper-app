@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, User, Loader2 } from 'lucide-react';
+import logo from '../assets/logo.png';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../services/firebase';
 
@@ -37,8 +38,8 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
         {/* Header */}
         <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-dark-800/50">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
-              <User className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center glow-purple border border-white/5">
+              <img src={logo} alt="FV Logo" className="w-full h-full object-cover" />
             </div>
             <h2 className="text-lg font-bold text-white tracking-tight">Admin Login</h2>
           </div>

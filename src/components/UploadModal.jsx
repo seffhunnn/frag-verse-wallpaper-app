@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { X, Upload, CheckCircle, AlertCircle, ImagePlus, Loader2 } from 'lucide-react';
+import logo from '../assets/logo.png';
 import { uploadToCloudinary, normalizeCloudinaryPhoto } from '../services/cloudinaryApi';
 import { insertSupabaseWallpaper } from '../services/supabaseApi';
 import { supabase } from '../services/supabase';
@@ -136,8 +137,8 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
-              <ImagePlus className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center glow-purple border border-white/5">
+              <img src={logo} alt="FV Logo" className="w-full h-full object-cover" />
             </div>
             <h2 className="text-base font-semibold text-white">Upload Wallpaper</h2>
           </div>

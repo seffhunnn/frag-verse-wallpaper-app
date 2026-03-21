@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, Upload, Menu, X, Sparkles, User, LogOut, ChevronDown, ImagePlus } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 // ─────────────────────────────────────────────────────────────────
 // Navbar
@@ -73,11 +74,11 @@ const Navbar = ({ onSearch, onUploadClick, onMyUploadsClick, onLogout, user }) =
         <div className="flex items-center justify-between h-16 gap-4">
 
           {/* Logo */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center glow-purple">
-              <Sparkles className="w-4 h-4 text-white" />
+          <div className="flex items-center gap-2 flex-shrink-0 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center glow-purple border border-white/5">
+              <img src={logo} alt="FV Logo" className="w-full h-full object-cover" />
             </div>
-            <span className="text-xl font-bold text-gradient hidden sm:block">
+            <span className="text-xl font-bold text-gradient hidden sm:block tracking-tight">
               Frag Verse
             </span>
           </div>
