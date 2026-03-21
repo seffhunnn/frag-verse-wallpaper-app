@@ -38,7 +38,7 @@ const HeroSection = ({ onSearch }) => {
             <span className="text-white">Find what </span>
             <span className="text-gradient">feels</span>
             <br />
-            <span className="text-white">like you bro.</span>
+            <span className="text-white">like you.</span>
           </h1>
 
           {/* Subtext */}
