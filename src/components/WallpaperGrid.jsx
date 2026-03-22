@@ -30,16 +30,17 @@ const WallpaperGrid = ({
   lastWallpaperRef,
 }) => {
 
+  const sessionSalt = useRef(Math.floor(Math.random() * 10000)).current;
   const skeletonCount = 8; // Fewer for appending
 
   return (
     <section className="pb-16 animate-fade-in">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* ── Section header ── */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-bold text-white">{title}</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-500">{title}</h2>
             <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
           </div>
         </div>
@@ -54,28 +55,45 @@ const WallpaperGrid = ({
         )}
 
         {/* ── Grid: cards and skeletons ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6 grid-flow-dense">
           {/* Initial loading skeletons (Show if fetching first batch or searching) */}
           {loading && (wallpapers.length < 5) && 
-            Array.from({ length: 12 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))
+            Array.from({ length: 14 }).map((_, i) => {
+              const feat = i === 0 || i === 7;
+              return (
+                <div key={i} className={feat ? 'sm:col-span-2 sm:row-span-2' : ''}>
+                  <SkeletonCard isFeatured={feat} />
+                </div>
+              );
+            })
           }
 
           {/* Real wallpaper cards */}
-          {wallpapers.map((wallpaper, i) => (
-            <WallpaperCard
-              key={`${wallpaper.id}-${i}`} // Ensure unique keys even if id repeats
-              ref={i === wallpapers.length - 1 ? lastWallpaperRef : null}
-              wallpaper={wallpaper}
-              index={i}
-              onCardClick={onCardClick}
-              onDelete={onDeleteWallpaper}
-              onToggleFavorite={onToggleFavorite}
-              isFavorited={favoriteIds.includes(wallpaper.id)}
-              isAdmin={isAdmin}
-            />
-          ))}
+          {wallpapers.map((wallpaper, i) => {
+            // Hash-like logic to determine if this card is featured
+            // Deterministic per session (via salt) and wallpaper ID
+            const charSum = (wallpaper.id || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const isFeatured = (charSum + sessionSalt) % 10 === 0; 
+              
+              return (
+                <div 
+                  key={`${wallpaper.id}-${i}`}
+                  className={isFeatured ? 'sm:col-span-2 sm:row-span-2' : ''}
+                >
+                  <WallpaperCard
+                    ref={i === wallpapers.length - 1 ? lastWallpaperRef : null}
+                    wallpaper={wallpaper}
+                    index={i}
+                    onCardClick={onCardClick}
+                    onDelete={onDeleteWallpaper}
+                    onToggleFavorite={onToggleFavorite}
+                    isFavorited={favoriteIds.includes(wallpaper.id)}
+                    isAdmin={isAdmin}
+                    isFeatured={isFeatured}
+                  />
+                </div>
+            );
+          })}
 
           {/* Append skeletons while loading more */}
           {loading && wallpapers.length > 0 && 

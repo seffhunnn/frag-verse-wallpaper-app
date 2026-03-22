@@ -21,8 +21,8 @@ const CATEGORIES = [
 
 const Categories = ({ activeCategory = null, onSelect }) => {
   return (
-    <section className="pt-0 pb-1 mb-4 animate-fade-in border-b border-white/5">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-9">
+    <section className="pt-0 pb-1 mb-4 animate-fade-in border-b border-slate-200 dark:border-white/5 transition-colors duration-500">
+      <div className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-9">
         <div className="flex w-full items-center gap-1 overflow-x-auto hide-scrollbar scroll-smooth py-2">
           {CATEGORIES.map((cat) => (
             <CategoryCard

@@ -38,7 +38,7 @@ const downloadWallpaper = async (url, filename) => {
 // ─────────────────────────────────────────────────────────────────
 // WallpaperCard
 // Props:
-const WallpaperCard = forwardRef(({ wallpaper = {}, index = 0, onCardClick, onDelete, isAdmin = false }, ref) => {
+const WallpaperCard = forwardRef(({ wallpaper = {}, index = 0, onCardClick, onDelete, isAdmin = false, isFeatured = false }, ref) => {
   const {
     id,
     image,
@@ -77,10 +77,10 @@ const WallpaperCard = forwardRef(({ wallpaper = {}, index = 0, onCardClick, onDe
       ref={ref}
       onClick={handleCardClick}
       style={{ transform: 'translateZ(0)' }}
-      className="group relative rounded-2xl overflow-hidden card-hover cursor-pointer bg-dark-700 border border-transparent"
+      className={`group relative rounded-2xl overflow-hidden card-hover cursor-pointer bg-white dark:bg-dark-700 border border-slate-100 dark:border-transparent transition-all duration-500 shadow-sm dark:shadow-none flex flex-col h-full ${isFeatured ? 'ring-2 ring-purple-500/10' : ''}`}
     >
       {/* ── Image / Placeholder ── */}
-      <div className="w-full aspect-[16/10] relative overflow-hidden bg-black">
+      <div className={`w-full flex-1 min-h-[280px] relative overflow-hidden bg-black`}>
         {image ? (
           <img
             src={image}
@@ -94,7 +94,7 @@ const WallpaperCard = forwardRef(({ wallpaper = {}, index = 0, onCardClick, onDe
           </div>
         )}
 
-        {/* Source badge (Moved to left) */}
+        {/* Source badge */}
         {source && (
           <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-lg text-white font-bold text-[10px] uppercase tracking-wider backdrop-blur-md z-[15] shadow-sm
             ${source === 'unsplash' ? 'bg-blue-600/80 shadow-blue-500/20' : 'bg-green-600/80 shadow-green-500/20'}`}>
@@ -103,63 +103,57 @@ const WallpaperCard = forwardRef(({ wallpaper = {}, index = 0, onCardClick, onDe
         )}
 
         {/* ── Hover overlay ── */}
-        <div className="absolute inset-[-1px] bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2">
-
-              {/* Download button */}
-              <button
-                onClick={handleDownload}
-                disabled={downloading}
-                title="Download full resolution"
-                className={`flex items-center gap-1.5 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 border border-white/10
-                  ${downloading
-                    ? 'bg-purple-500/40 cursor-wait'
-                    : 'bg-white/15 hover:bg-purple-500/60 hover:border-purple-400/40 hover:scale-105'
-                  }`}
-              >
-                <Download className={`w-3.5 h-3.5 ${downloading ? 'animate-bounce' : ''}`} />
-                {downloading ? 'Saving…' : downloads > 0 ? downloads.toLocaleString() : 'Download'}
-              </button>
-
-            </div>
-
-              <button
-                onClick={(e) => { e.stopPropagation(); window.open(fullImage || image, '_blank', 'noopener,noreferrer'); }}
-                title="View full resolution"
-                className="bg-white/15 backdrop-blur-sm hover:bg-white/25 text-white p-1.5 rounded-lg transition-all duration-200 border border-white/10"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Delete button (Supabase + Admin only) */}
-              {isAdmin && source === 'user' && (
-                <button
-                  onClick={handleDelete}
-                  title="Delete wallpaper"
-                  className="bg-red-500/20 backdrop-blur-sm border border-red-500/30 text-red-100 p-1.5 rounded-lg transition-all duration-200 hover:bg-red-500 hover:scale-110 ml-auto"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 z-[20] flex flex-col items-center justify-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl text-white transition-all duration-200 transform hover:scale-110 active:scale-95 shadow-xl disabled:opacity-50"
+              title="Download"
+            >
+              {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={handleCardClick}
+              className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl text-white transition-all duration-200 transform hover:scale-110 active:scale-95 shadow-xl"
+              title="Maximize"
+            >
+              <Maximize2 className="w-5 h-5" />
+            </button>
           </div>
+          {isAdmin && (
+            <button
+              onClick={handleDelete}
+              className="px-4 py-2 bg-red-500/80 hover:bg-red-500 backdrop-blur-md text-white rounded-xl text-[10px] font-bold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 shadow-lg"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Permanently
+            </button>
+          )}
         </div>
 
+        {/* Featured Badge */}
+        {isFeatured && (
+          <div className="absolute bottom-3 right-3 px-2.5 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg z-[15] pointer-events-none group-hover:opacity-0 transition-opacity flex items-center justify-center">
+            <span className="text-[9px] font-black uppercase tracking-widest text-white/90 leading-none">Curated Choice</span>
+          </div>
+        )}
+      </div>
+
       {/* ── Card footer ── */}
-      <div className="px-3 py-2.5 flex items-center justify-between gap-2">
+      <div className="px-3 py-2.5 flex items-center justify-between gap-2 flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-6 h-6 rounded-full bg-dark-600 flex-shrink-0 flex items-center justify-center overflow-hidden">
+          <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-dark-600 flex-shrink-0 flex items-center justify-center overflow-hidden transition-colors duration-500">
             {authorImage ? (
               <img src={authorImage} alt={author} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-[11px] font-bold text-white">
+              <span className="text-[11px] font-bold text-slate-800 dark:text-white">
                 {author.charAt(0).toUpperCase()}
               </span>
             )}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-200 truncate leading-tight capitalize">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate leading-tight capitalize transition-colors duration-500">
               {title || 'Untitled'}
             </p>
             {authorLink ? (
@@ -173,7 +167,7 @@ const WallpaperCard = forwardRef(({ wallpaper = {}, index = 0, onCardClick, onDe
                 {author}
               </a>
             ) : (
-              <p className="text-xs text-slate-500 truncate leading-tight">{author}</p>
+              <p className="text-xs text-slate-500 truncate leading-tight transition-colors duration-500">{author}</p>
             )}
           </div>
         </div>

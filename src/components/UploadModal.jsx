@@ -132,20 +132,20 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
       onClick={(e) => { if (e.target === e.currentTarget && status !== 'uploading') handleClose(); }}
     >
       {/* Panel */}
-      <div className="relative w-full max-w-lg bg-[#0e0e15] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
+      <div className="relative w-full max-w-lg bg-white dark:bg-[#0e0e15] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-fade-in transition-colors duration-500">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/8 transition-colors duration-500">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center glow-purple border border-white/5">
+            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center glow-purple border border-slate-200 dark:border-white/5">
               <img src={logo} alt="FV Logo" className="w-full h-full object-cover" />
             </div>
-            <h2 className="text-base font-semibold text-white">Upload Wallpaper</h2>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white transition-colors duration-500">Upload Wallpaper</h2>
           </div>
           {status !== 'uploading' && (
             <button
               onClick={handleClose}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -183,12 +183,12 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
               onDrop={onDrop}
-              className={`relative rounded-xl border-2 border-dashed transition-all duration-200 overflow-hidden cursor-pointer
+              className={`relative rounded-xl border-2 border-dashed transition-all duration-300 overflow-hidden cursor-pointer
                 ${dragging
                   ? 'border-violet-400 bg-violet-500/10 scale-[1.01]'
                   : preview
                     ? 'border-violet-500/40 bg-transparent'
-                    : 'border-white/10 bg-dark-800/50 hover:border-violet-500/50 hover:bg-violet-500/5'
+                    : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-dark-800/50 hover:border-violet-500/50 hover:bg-violet-500/5'
                 }
                 ${status === 'uploading' ? 'pointer-events-none' : ''}
               `}
@@ -222,11 +222,11 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
                     <Upload className="w-5 h-5 text-violet-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-200">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 transition-colors duration-500">
                       Drop your image here
                     </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      or <span className="text-violet-400 font-medium">click to browse</span> — JPG, PNG, WEBP supported
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 transition-colors duration-500">
+                      or <span className="text-violet-500 dark:text-violet-400 font-medium">click to browse</span> — JPG, PNG, WEBP supported
                     </p>
                   </div>
                 </div>
@@ -246,25 +246,25 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
           {(status === 'selected' || status === 'uploading') && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-400 block">Title</label>
+                <label className="text-xs font-medium text-slate-400 block transition-colors duration-500">Title</label>
                 <input
                   type="text"
                   placeholder="e.g. Neon City"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   disabled={status === 'uploading'}
-                  className="w-full bg-dark-700 border border-white/10 text-slate-200 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/40 transition-all disabled:opacity-60"
+                  className="w-full bg-slate-50 dark:bg-dark-700 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:focus:ring-violet-500/50 focus:border-violet-500/40 transition-all disabled:opacity-60"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-400 block">Author</label>
+                <label className="text-xs font-medium text-slate-400 block transition-colors duration-500">Author</label>
                 <input
                   type="text"
                   placeholder="Your name"
                   value={author}
                   onChange={(e) => setAuthor(e.target.value)}
                   disabled={status === 'uploading'}
-                  className="w-full bg-dark-700 border border-white/10 text-slate-200 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/40 transition-all disabled:opacity-60"
+                  className="w-full bg-slate-50 dark:bg-dark-700 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:focus:ring-violet-500/50 focus:border-violet-500/40 transition-all disabled:opacity-60"
                 />
               </div>
             </div>
@@ -278,7 +278,7 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 disabled={status === 'uploading'}
-                className="w-full bg-dark-700 border border-white/10 text-slate-200 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/40 transition-all cursor-pointer disabled:opacity-60"
+                className="w-full bg-slate-50 dark:bg-dark-700 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:focus:ring-violet-500/50 focus:border-violet-500/40 transition-all cursor-pointer disabled:opacity-60"
               >
                 {CATEGORIES.map(c => (
                   <option key={c} value={c}>{c}</option>
@@ -312,7 +312,7 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
               {status !== 'uploading' && (
                 <button
                   onClick={handleClose}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 border border-white/10 hover:bg-white/5 hover:text-white transition-all duration-200"
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-all duration-200"
                 >
                   Cancel
                 </button>

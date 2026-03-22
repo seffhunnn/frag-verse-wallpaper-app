@@ -25,6 +25,23 @@ function App() {
   const [loginModalOpen,    setLoginModalOpen]    = useState(false);
   const [viewMode,          setViewMode]          = useState('all'); // 'all' | 'fragverse'
   const [showToast,         setShowToast]         = useState(false);
+  const [toastMessage,      setToastMessage]      = useState('');
+  const [theme,             setTheme]             = useState(() => localStorage.getItem('theme') || 'light');
+  const [searchQuery,       setSearchQuery]       = useState('');
+
+  // ── Theme Sync ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  }, []);
 
   // ── Auth Logic (Temporary/Local) ───────────────────────────────
   useEffect(() => {
@@ -73,6 +90,7 @@ function App() {
     localStorage.setItem('user', JSON.stringify(adminUser));
     setLoginModalOpen(false);
     
+    setToastMessage("Admin login activated!");
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
   }, [ADMIN_EMAIL]);
@@ -81,13 +99,20 @@ function App() {
   useEffect(() => {
     const onKey = (e) => {
       // Ctrl + Shift + L
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') {
-        setLoginModalOpen(true);
+      if (e.ctrlKey && e.shiftKey && (e.key.toLowerCase() === 'l' || e.code === 'KeyL')) {
+        e.preventDefault();
+        if (user && user.isLoggedIn) {
+          setToastMessage(`Logged in already! Logout to login again?`);
+          setShowToast(true);
+          setTimeout(() => setShowToast(false), 3000);
+        } else {
+          setLoginModalOpen(true);
+        }
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [user]);
 
   const handleMyUploads = useCallback(() => {
     setViewMode('fragverse');
@@ -227,8 +252,9 @@ function App() {
 
   // ── Safety Check (PREVENT CRASH) ──
   if (!wallpapers) {
+    const startTheme = localStorage.getItem('theme') || 'light';
     return (
-      <div className="min-h-screen bg-dark-900 flex items-center justify-center text-white font-bold animate-pulse text-xl">
+      <div className={`min-h-screen flex items-center justify-center font-bold animate-pulse text-xl transition-colors duration-500 ${startTheme === 'dark' ? 'bg-dark-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
         Initializing FragVerse...
       </div>
     );
@@ -261,24 +287,32 @@ function App() {
 
 
   return (
-    <div className="dark min-h-screen bg-dark-900">
+    <div className="min-h-screen transition-colors duration-500 bg-slate-50 dark:bg-dark-900">
       <Navbar 
         onSearch={handleSearch} 
         onUploadClick={handleUploadClick} 
         onMyUploadsClick={handleMyUploads}
         onLogout={handleLogout}
         user={user}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
       />
       <main>
-        <HeroSection onSearch={handleSearch} />
+        <HeroSection 
+          onSearch={handleSearch} 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
         {/* ── Filter Toggles ── */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 mb-10 flex flex-wrap justify-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-5 mb-3 flex flex-wrap justify-center gap-4">
           <button
             onClick={() => setViewMode('all')}
             className={`px-6 py-2.5 rounded-2xl font-bold text-sm transition-all duration-300 ease-in-out flex items-center gap-2 border-2 
               ${viewMode === 'all' 
                 ? 'bg-blue-800 text-white border-blue-800 shadow-xl shadow-blue-900/40 scale-105' 
-                : 'bg-dark-800 text-slate-400 border-white/5 hover:border-white/10'}`}
+                : 'bg-white dark:bg-dark-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'}`}
           >
             All Wallpapers
           </button>
@@ -287,7 +321,7 @@ function App() {
             className={`px-6 py-2.5 rounded-2xl font-bold text-sm transition-all duration-300 ease-in-out flex items-center gap-2 border-2 
               ${viewMode === 'fragverse' 
                 ? 'bg-emerald-700 text-white border-emerald-700 shadow-xl shadow-emerald-900/40 scale-105' 
-                : 'bg-dark-800 text-slate-400 border-white/5 hover:border-white/10'}`}
+                : 'bg-white dark:bg-dark-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'}`}
           >
             FragVerse Uploads
           </button>
@@ -348,11 +382,13 @@ function App() {
 
       {/* Admin Login Toast */}
       {showToast && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl border border-white/20 animate-slide-up flex items-center gap-3">
-          <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/></svg>
+        <div className="fixed bottom-8 left-0 right-0 z-[100] flex justify-center pointer-events-none">
+          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl border border-white/20 animate-slide-up flex items-center gap-3 pointer-events-auto">
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/></svg>
+            </div>
+            <span className="text-sm font-bold tracking-wide">{toastMessage}</span>
           </div>
-          <span className="text-sm font-bold tracking-wide">Admin login activated</span>
         </div>
       )}
     </div>

@@ -15,10 +15,8 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
-      console.log("[FIREBASE] Login success:", user.email);
       onLoginSuccess(user);
     } catch (err) {
-      console.error("[FIREBASE] Login error:", err);
       setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
@@ -33,20 +31,20 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
       style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}
       onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
     >
-      <div className="relative w-full max-w-sm bg-[#0e0e15] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
+      <div className="relative w-full max-w-sm bg-white dark:bg-[#0e0e15] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-scale-in transition-colors duration-500">
         
         {/* Header */}
-        <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-dark-800/50">
+        <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-dark-800/50 transition-colors duration-500">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center glow-purple border border-white/5">
+            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center glow-purple border border-slate-200 dark:border-white/5">
               <img src={logo} alt="FV Logo" className="w-full h-full object-cover" />
             </div>
-            <h2 className="text-lg font-bold text-white tracking-tight">Admin Login</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-500">Admin Login</h2>
           </div>
           <button
             onClick={onClose}
             disabled={loading}
-            className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30"
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all disabled:opacity-30"
           >
             <X className="w-5 h-5" />
           </button>
@@ -54,14 +52,14 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
 
         {/* Content */}
         <div className="p-8 space-y-6">
-          <p className="text-sm text-center text-slate-400 leading-relaxed">
+          <p className="text-sm text-center text-slate-500 dark:text-slate-400 leading-relaxed transition-colors duration-500">
             This dashboard is restricted to the administrator. Please authenticate to gain access.
           </p>
 
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white text-dark-900 rounded-xl font-bold text-sm transition-all duration-200 hover:bg-slate-100 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-white/5"
+            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-slate-900 dark:bg-white text-white dark:text-dark-900 rounded-xl font-bold text-sm transition-all duration-200 hover:bg-black dark:hover:bg-slate-100 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-200 dark:shadow-white/5"
           >
             {loading ? (
               <>
@@ -101,8 +99,8 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-dark-800/30 border-t border-white/5 flex justify-center">
-          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-dark-800/30 border-t border-slate-100 dark:border-white/5 flex justify-center transition-colors duration-500">
+          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500">
             Authenticated by FragVerse
           </p>
         </div>

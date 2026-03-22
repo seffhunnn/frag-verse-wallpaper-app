@@ -74,24 +74,24 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
     >
       {/* Modal panel */}
       <div
-        className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden bg-dark-800 border border-purple-900/20  animate-slide-up"
+        className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-dark-800 border border-slate-200 dark:border-purple-900/20 shadow-2xl animate-slide-up transition-colors duration-500"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Top bar ── */}
-        <div className="flex items-center justify-between px-5 py-3 bg-dark-800 border-b border-purple-500/15 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 bg-white dark:bg-dark-800 border-b border-slate-100 dark:border-purple-500/15 flex-shrink-0 transition-colors duration-500">
           <div className="flex items-center gap-3 min-w-0">
             {/* Author avatar */}
-            <div className="w-8 h-8 rounded-full bg-dark-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-dark-600 flex items-center justify-center flex-shrink-0 overflow-hidden transition-colors duration-500">
               {authorImage ? (
                 <img src={authorImage} alt={author} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-xs font-bold text-white">
+                <span className="text-xs font-bold text-slate-800 dark:text-white">
                   {author.charAt(0).toUpperCase()}
                 </span>
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-white truncate capitalize">{title}</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate capitalize transition-colors duration-500">{title}</p>
               {authorLink ? (
                 <a
                   href={authorLink}
@@ -126,7 +126,7 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
             {/* Close button */}
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all duration-200"
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all duration-200"
               title="Close (Esc)"
             >
               <X className="w-5 h-5" />
@@ -151,8 +151,8 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
         </div>
 
         {/* ── Bottom info bar ── */}
-        <div className="px-5 py-3 bg-dark-800 border-t border-purple-500/15 flex items-center justify-between text-xs text-slate-500 flex-shrink-0">
-          <span>Click outside or press <kbd className="bg-white/10 text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-mono">Esc</kbd> to close</span>
+        <div className="px-5 py-3 bg-white dark:bg-dark-800 border-t border-slate-100 dark:border-purple-500/15 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 flex-shrink-0 transition-colors duration-500">
+          <span>Click outside or press <kbd className="bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-mono">Esc</kbd> to close</span>
         </div>
       </div>
     </div>
