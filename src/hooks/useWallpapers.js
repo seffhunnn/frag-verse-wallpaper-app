@@ -2,11 +2,56 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { fetchTrendingWallpapers, searchWallpapers } from '../services/unsplashApi';
 import { fetchSupabaseWallpapers } from '../services/supabaseApi';
 
+const FRAGVERSE_SLOT_PROBABILITY = 0.05;
+const FRAGVERSE_COOLDOWN_MIN = 8;
+const FRAGVERSE_COOLDOWN_MAX = 12;
+const FRAGVERSE_RECENT_STORAGE_KEY = 'fragverse_recent_ids_v1';
+const RECENT_FRAGVERSE_CACHE_SIZE = 120;
+
+function loadRecentFragverseIds() {
+  try {
+    const raw = localStorage.getItem(FRAGVERSE_RECENT_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(String);
+  } catch {
+    return [];
+  }
+}
+
+function persistRecentFragverseIds(ids) {
+  try {
+    const trimmed = ids.slice(-RECENT_FRAGVERSE_CACHE_SIZE);
+    localStorage.setItem(FRAGVERSE_RECENT_STORAGE_KEY, JSON.stringify(trimmed));
+  } catch {
+    // Ignore storage write issues (private mode/quota).
+  }
+}
+
+function ensureRecentFragverseIdsSet(recentRef) {
+  if (recentRef.current instanceof Set) return;
+  const cur = recentRef.current;
+  recentRef.current = new Set(
+    Array.isArray(cur) ? cur.map(String) : []
+  );
+}
+
+function isFragverseWallpaper(w) {
+  return w && (w.source === 'user' || w.isSupabase === true);
+}
+
+function randomCooldownSlots() {
+  return (
+    Math.floor(Math.random() * (FRAGVERSE_COOLDOWN_MAX - FRAGVERSE_COOLDOWN_MIN + 1)) +
+    FRAGVERSE_COOLDOWN_MIN
+  );
+}
+
 // ── Shuffle Helper (Fisher-Yates) ────────────────────────────────
-function shuffleArray(array) {
+function shuffleArray(array, randomFn = Math.random) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(randomFn() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
@@ -25,7 +70,6 @@ function shuffleArray(array) {
 // ─────────────────────────────────────────────────────────────────
 const useWallpapers = () => {
   const [userWallpapers,    setUserWallpapers]    = useState([]);
-  const [apiWallpapers,     setApiWallpapers]     = useState([]);
   const [displayWallpapers, setDisplayWallpapers] = useState([]);
   const [searchResults,     setSearchResults]     = useState([]);
   const [loading,           setLoading]           = useState(false);
@@ -37,42 +81,98 @@ const useWallpapers = () => {
   const requestIdRef = useRef(0);
   const isFetchingRef = useRef(false);
   const userWallpapersRef = useRef([]); // Ref for stable access inside callbacks
-  const isSearching = query.trim().length > 0;
+  const shownIdsRef = useRef(new Set());
+  const shownFragverseInFeedRef = useRef(new Set());
+  const fragverseCooldownRemainingRef = useRef(0);
+  const recentFragverseIdsRef = useRef(new Set(loadRecentFragverseIds()));
 
   // Sync ref with state
   useEffect(() => {
     userWallpapersRef.current = userWallpapers;
   }, [userWallpapers]);
 
-  // 1. Initial Load: user-uploaded wallpapers from Supabase (Once)
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const data = await fetchSupabaseWallpapers();
-        // REQUIREMENT: Randomize uploaded wallpapers on refresh
-        const randomized = shuffleArray(data || []);
-        setUserWallpapers(randomized);
-      } catch (sErr) {
-      }
-    };
-    fetchUser();
+  const getUniqueById = useCallback((items) => {
+    return Array.from(new Map(items.map(item => [item.id, item])).values());
   }, []);
 
-  // 2. Local Filter for User Wallpapers (Memoized to prevent loops)
-  const filteredUserWallpapers = useMemo(() => {
-    return userWallpapers.filter(w => {
-      if (!query.trim()) return true;
-      const q = query.toLowerCase();
-      return (
-        (w.title && w.title.toLowerCase().includes(q)) ||
-        (w.category && w.category.toLowerCase().includes(q)) ||
-        (w.author && w.author.toLowerCase().includes(q))
-      );
-    });
-  }, [userWallpapers, query]);
+  const buildMixedFeed = useCallback((unsplashItems, fragverseItems, targetSize) => {
+    const totalTarget = Math.max(1, targetSize || unsplashItems.length || 20);
+    const uniqueUnsplash = getUniqueById(unsplashItems);
+    const uniqueFragverse = getUniqueById(fragverseItems).filter(isFragverseWallpaper);
 
-  // 3. Unsplash Fetching
-  const loadPhotos = useCallback(async (searchQuery = '', pageNum = 1, isAppend = false) => {
+    if (uniqueUnsplash.length === 0 && uniqueFragverse.length > 0) {
+      const fallback = shuffleArray(
+        uniqueFragverse.filter(w => !shownFragverseInFeedRef.current.has(w.id))
+      ).slice(0, totalTarget);
+      fallback.forEach(w => {
+        shownFragverseInFeedRef.current.add(w.id);
+        shownIdsRef.current.add(w.id);
+      });
+      return fallback;
+    }
+
+    const maxFragverseInBatch = Math.min(3, Math.max(0, Math.floor(totalTarget / 10)));
+    let fragInBatch = 0;
+    let cooldown = fragverseCooldownRemainingRef.current;
+
+    let unsplashPool = shuffleArray(
+      uniqueUnsplash.filter(u => !shownIdsRef.current.has(u.id))
+    );
+    if (unsplashPool.length === 0) {
+      unsplashPool = shuffleArray([...uniqueUnsplash]);
+    }
+    let uIdx = 0;
+
+    const fragPool = shuffleArray(
+      uniqueFragverse.filter(w => !shownFragverseInFeedRef.current.has(w.id))
+    );
+    let fragIdx = 0;
+
+    const takeUnsplash = () => {
+      while (uIdx >= unsplashPool.length) {
+        unsplashPool = shuffleArray(
+          uniqueUnsplash.filter(u => !shownIdsRef.current.has(u.id))
+        );
+        if (unsplashPool.length === 0) {
+          unsplashPool = shuffleArray([...uniqueUnsplash]);
+        }
+        uIdx = 0;
+      }
+      const w = unsplashPool[uIdx++];
+      shownIdsRef.current.add(w.id);
+      return w;
+    };
+
+    const result = [];
+    for (let slot = 0; slot < totalTarget; slot++) {
+      let pick = null;
+
+      if (cooldown > 0) {
+        cooldown--;
+        pick = takeUnsplash();
+      } else if (
+        fragInBatch < maxFragverseInBatch &&
+        fragIdx < fragPool.length &&
+        Math.random() < FRAGVERSE_SLOT_PROBABILITY
+      ) {
+        pick = fragPool[fragIdx++];
+        fragInBatch++;
+        shownFragverseInFeedRef.current.add(pick.id);
+        shownIdsRef.current.add(pick.id);
+        cooldown = randomCooldownSlots();
+      } else {
+        pick = takeUnsplash();
+      }
+
+      result.push(pick);
+    }
+
+    fragverseCooldownRemainingRef.current = cooldown;
+    return result;
+  }, [getUniqueById]);
+
+  // 3. Wallpaper fetching and weighted mixing
+  const loadPhotos = useCallback(async (searchQuery = '', pageNum = 1) => {
     // 1. NON-REACTIVE FETCHING LOCK
     if (isFetchingRef.current) return;
     
@@ -83,62 +183,50 @@ const useWallpapers = () => {
     setError(null);
 
     try {
-      const data = searchQuery.trim()
-        ? await searchWallpapers(searchQuery, pageNum)
-        : await fetchTrendingWallpapers(pageNum);
+      const shouldRefreshFragverse = pageNum === 1;
+      const [apiData, supabaseData] = await Promise.all([
+        searchQuery.trim()
+          ? searchWallpapers(searchQuery, pageNum)
+          : fetchTrendingWallpapers(pageNum),
+        shouldRefreshFragverse
+          ? fetchSupabaseWallpapers()
+          : Promise.resolve(userWallpapersRef.current)
+      ]);
       
       // ABORT IF STALE
       if (currentRequestId !== requestIdRef.current) {
         return;
       }
 
-      // REQUIREMENT: Randomize when page is refreshed manually (apply on page 1 load)
-      let finalBatch = data;
-      if (pageNum === 1 && !searchQuery.trim()) {
-        finalBatch = shuffleArray(data);
+      let currentUserWallpapers = userWallpapersRef.current;
+      if (shouldRefreshFragverse) {
+        currentUserWallpapers = shuffleArray(supabaseData || []);
+        setUserWallpapers(currentUserWallpapers);
       }
 
       if (searchQuery.trim()) {
-        // ── STABLE SEARCH DISPLAY LOGIC ──
-        if (pageNum === 1) {
-          // Perform local filtering INSIDE the callback to avoid closure staleness
-          const q = searchQuery.toLowerCase();
-          const localMatches = userWallpapersRef.current.filter(w => (
-            (w.title && w.title.toLowerCase().includes(q)) ||
-            (w.category && w.category.toLowerCase().includes(q)) ||
-            (w.author && w.author.toLowerCase().includes(q))
-          ));
+        const q = searchQuery.toLowerCase();
+        const localMatches = currentUserWallpapers.filter(w => (
+          (w.title && w.title.toLowerCase().includes(q)) ||
+          (w.category && w.category.toLowerCase().includes(q)) ||
+          (w.author && w.author.toLowerCase().includes(q))
+        ));
 
-          // Merge matches from local + remote and shuffle ONCE
-          const combined = [...localMatches, ...data];
-          const unique = Array.from(new Map(combined.map(i => [i.id, i])).values());
-          setSearchResults(shuffleArray(unique));
-        } else {
-          // Just append new search results to the end
-          setSearchResults(prev => {
-            const combined = [...prev, ...data];
-            return Array.from(new Map(combined.map(i => [i.id, i])).values());
-          });
-        }
+        const mixedBatch = buildMixedFeed(apiData, localMatches, apiData.length || 20);
+
+        setSearchResults(prev => {
+          if (pageNum === 1) return mixedBatch;
+          return getUniqueById([...prev, ...mixedBatch]);
+        });
       } else {
-        setApiWallpapers(data); 
-        
-        // ── STABLE TRENDING DISPLAY LOGIC ──
-        if (pageNum === 1) {
-          // Merge with current user wallpapers and shuffle ONCE
-          const combo = [...userWallpapers, ...data];
-          const unique = Array.from(new Map(combo.map(i => [i.id, i])).values());
-          setDisplayWallpapers(shuffleArray(unique));
-        } else {
-          // Just append new results to the existing shuffled mass
-          setDisplayWallpapers(prev => {
-            const combined = [...prev, ...data];
-            return Array.from(new Map(combined.map(i => [i.id, i])).values());
-          });
-        }
+        const mixedBatch = buildMixedFeed(apiData, currentUserWallpapers, apiData.length || 20);
+        setDisplayWallpapers(prev => {
+          if (pageNum === 1) return mixedBatch;
+          return getUniqueById([...prev, ...mixedBatch]);
+        });
       }
       
-      setHasMore(data.length > 0);
+      setHasMore(apiData.length > 0);
     } catch (err) {
       if (currentRequestId === requestIdRef.current) {
         setError(err.message || 'Failed to load wallpapers.');
@@ -149,14 +237,14 @@ const useWallpapers = () => {
         isFetchingRef.current = false;
       }
     }
-  }, [userWallpapers]); // Stable callback
+  }, [buildMixedFeed, getUniqueById]); // Stable callback
 
   // 5. FIX FETCH TIMING (Paginate when page state increases)
   useEffect(() => {
     if (page > 1) {
-      loadPhotos(query, page, true);
+      loadPhotos(query, page);
     }
-  }, [page]);
+  }, [page, loadPhotos, query]);
 
   // RESET ON NEW SEARCH
   useEffect(() => {
@@ -164,28 +252,14 @@ const useWallpapers = () => {
     setSearchResults([]);
     setHasMore(true);
     if (query.trim()) {
-      loadPhotos(query, 1, false);
+      loadPhotos(query, 1);
     }
-  }, [query]);
+  }, [query, loadPhotos]);
 
   // Load Unsplash on mount (only for API part)
   useEffect(() => {
-    loadPhotos('', 1, false);
+    loadPhotos('', 1);
   }, [loadPhotos]);
-
-  // 7. Initial merge when userWallpapers arrive (if Unsplash Page 1 is already there)
-  useEffect(() => {
-    if (userWallpapers.length > 0 && displayWallpapers.length > 0 && !query.trim()) {
-      setDisplayWallpapers(prev => {
-        const hasUser = prev.some(w => w.source === 'user');
-        if (hasUser) return prev; 
-        
-        const combined = [...userWallpapers, ...prev];
-        const unique = Array.from(new Map(combined.map(i => [i.id, i])).values());
-        return shuffleArray(unique);
-      });
-    }
-  }, [userWallpapers, query, displayWallpapers.length]);
 
   // Combined List for UI (Minimalistic Memo)
   const wallpapers = useMemo(() => {
@@ -206,11 +280,18 @@ const useWallpapers = () => {
     setQuery('');
     setPage(1);
     setHasMore(true);
-    loadPhotos('', 1, false);
+    loadPhotos('', 1);
   }, [loadPhotos]);
 
   // ── Prepend an uploaded wallpaper ──
   const prependWallpaper = useCallback((wallpaper) => {
+    ensureRecentFragverseIdsSet(recentFragverseIdsRef);
+    recentFragverseIdsRef.current.add(String(wallpaper.id));
+    const arr = Array.from(recentFragverseIdsRef.current).slice(-RECENT_FRAGVERSE_CACHE_SIZE);
+    recentFragverseIdsRef.current = new Set(arr);
+    persistRecentFragverseIds(arr);
+    shownIdsRef.current.add(wallpaper.id);
+    shownFragverseInFeedRef.current.add(wallpaper.id);
     setUserWallpapers(prev => [wallpaper, ...prev]);
     setDisplayWallpapers(prev => [wallpaper, ...prev]);
     setSearchResults(prev => [wallpaper, ...prev]);
@@ -218,6 +299,12 @@ const useWallpapers = () => {
 
   // ── Remove a deleted wallpaper ──
   const removeWallpaper = useCallback((id) => {
+    ensureRecentFragverseIdsSet(recentFragverseIdsRef);
+    shownIdsRef.current.delete(id);
+    shownFragverseInFeedRef.current.delete(id);
+    recentFragverseIdsRef.current.delete(String(id));
+    const filteredRecent = Array.from(recentFragverseIdsRef.current);
+    persistRecentFragverseIds(filteredRecent);
     setUserWallpapers(prev => prev.filter(w => w.id !== id));
     setDisplayWallpapers(prev => prev.filter(w => w.id !== id));
     setSearchResults(prev => prev.filter(w => w.id !== id));
@@ -226,7 +313,9 @@ const useWallpapers = () => {
 
 
   return { 
-    wallpapers, loading, error, query, search, clearSearch, loadMore, hasMore, 
+    wallpapers,
+    userWallpapers,
+    loading, error, query, search, clearSearch, loadMore, hasMore, 
     prependWallpaper, removeWallpaper
   };
 };

@@ -14,7 +14,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 function App() {
   const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'mohdsaifansari8888@gmail.com'; 
   const { 
-    wallpapers, loading, error, query, search, loadMore, hasMore, 
+    wallpapers, userWallpapers, loading, error, query, search, loadMore, hasMore, 
     prependWallpaper, removeWallpaper
   } = useWallpapers();
 
@@ -260,13 +260,10 @@ function App() {
     );
   }
 
-  // ── Filtered wallpapers for display ──
-  const displayedWallpapers = wallpapers.filter((w) => {
-    if (viewMode === 'fragverse' && w.source !== 'user') {
-      return false;
-    }
-    return true;
-  });
+  // ── Wallpapers for display: Fragverse tab uses full upload list (not mixed feed) ──
+  const displayedWallpapers = viewMode === 'fragverse'
+    ? userWallpapers
+    : wallpapers;
 
   // ── Dynamic grid heading ─────────────────────────────────────────
   const gridTitle = viewMode === 'fragverse'
