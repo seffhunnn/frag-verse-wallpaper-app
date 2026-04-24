@@ -192,12 +192,15 @@ const Navbar = ({ onSearch, onUploadClick, onMyUploadsClick, onLogout, user, the
             )}
 
 
-            <button
-              className="sm:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-              onClick={() => setMenuOpen(!menuOpen)}
-            >
+           {user && (
+              <button
+                className="sm:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                onClick={() => setMenuOpen(!menuOpen)}
+              >
+      
               {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
+           })
           </div>
         </div>
 
