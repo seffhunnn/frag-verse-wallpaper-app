@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { X, User, Loader2 } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../services/firebase';
 
-const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
+const LoginModal = ({ isOpen, onClose, onLoginSuccess, isAdminMode = false }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -14,8 +14,7 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      
-      onLoginSuccess(user);
+      onLoginSuccess(user, isAdminMode);
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
@@ -31,29 +30,38 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
       style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}
       onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
     >
-      <div className="relative w-full max-w-sm bg-white dark:bg-[#0e0e15] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-scale-in transition-colors duration-500">
-        
+      <div className="relative w-full max-w-sm rounded-modal shadow-panel overflow-hidden animate-scale-in border border-[var(--border)]"
+        style={{ background: 'var(--surface)' }}>
+
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-dark-800/50 transition-colors duration-500">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center glow-purple border border-slate-200 dark:border-white/5">
-              <img src={logo} alt="FV Logo" className="w-full h-full object-cover" />
+        <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between"
+          style={{ background: 'var(--surface-2)' }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-[10px] overflow-hidden flex-shrink-0">
+              <img src={logo} alt="Fragverse" className="w-full h-full object-cover" />
             </div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-500">Admin Login</h2>
+            <h2 className="text-[15px] font-bold text-[var(--text-primary)] tracking-tight">
+              {isAdminMode ? 'Admin Login' : 'Welcome to Fragverse'}
+            </h2>
           </div>
           <button
             onClick={onClose}
             disabled={loading}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all disabled:opacity-30"
+            className="w-8 h-8 rounded-[8px] flex items-center justify-center
+                       text-[var(--text-muted)] hover:text-[var(--text-primary)]
+                       hover:bg-[var(--surface)] transition-all disabled:opacity-30"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content */}
         <div className="p-8 space-y-6">
           <p className="text-sm text-center text-slate-500 dark:text-slate-400 leading-relaxed transition-colors duration-500">
-            This dashboard is restricted to the administrator. Please authenticate to gain access.
+            {isAdminMode 
+              ? 'This dashboard is restricted to the administrator. Please authenticate to gain access.'
+              : 'Sign in with Google to start uploading and saving your favorites.'
+            }
           </p>
 
           <button
@@ -92,16 +100,18 @@ const LoginModal = ({ isOpen, onClose, onLoginSuccess }) => {
           </button>
 
           {error && (
-            <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-              <p className="text-[11px] text-center text-red-400 font-medium">{error}</p>
+            <div className="px-4 py-3 bg-red-50 dark:bg-red-500/10
+                            border border-red-100 dark:border-red-500/20 rounded-[10px]">
+              <p className="text-[11px] text-center text-red-500 font-medium">{error}</p>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-dark-800/30 border-t border-slate-100 dark:border-white/5 flex justify-center transition-colors duration-500">
-          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500">
-            Authenticated by FragVerse
+        <div className="px-6 py-3 border-t border-[var(--border)] flex justify-center"
+          style={{ background: 'var(--surface-2)' }}>
+          <p className="text-[10px] uppercase font-semibold tracking-widest text-[var(--text-muted)]">
+            Authenticated by Fragverse
           </p>
         </div>
       </div>
