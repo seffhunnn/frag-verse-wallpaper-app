@@ -1,123 +1,95 @@
 # Contributing to FragVerse
 
-Thank you for your interest in contributing to **FragVerse**.
+Thank you for your interest in contributing to **FragVerse**! 
 
-FragVerse is a modern wallpaper platform focused on aesthetics, performance, and a smooth browsing experience. This guide will help you contribute in a clean and consistent way.
+FragVerse is a design-first, high-performance wallpaper discovery platform. To maintain a clean, stable, and fast application, please read and follow these contribution guidelines.
 
-## Before You Start
+---
 
-* Check existing issues before opening a new one
-* For larger UI or architecture changes, open an issue first to discuss the idea
-* Keep pull requests focused and minimal
-* Follow the existing design style and project structure
+## 🛠️ Local Development Setup
 
-## Development Setup
+To set up the project locally:
 
-### 1) Fork and clone
+1. **Fork the repository** on GitHub and clone your fork:
+   ```bash
+   git clone https://github.com/your-username/frag-verse-wallpaper-app.git
+   cd frag-verse-wallpaper-app
+   ```
 
-```bash
-git clone https://github.com/your-username/frag-verse-wallpaper-app.git
-cd frag-verse-wallpaper-app
-```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-### 2) Install dependencies
+3. **Configure Environment Variables:**
+   Create a `.env` file in the root directory by copying the template:
+   ```bash
+   cp .env.example .env
+   ```
+   Add valid developer keys for the APIs. Check [README.md](README.md) for variable definitions.
 
-```bash
-npm install
-```
+4. **Start the dev server:**
+   ```bash
+   npm run dev
+   ```
+   Your app will start running on [http://localhost:5173](http://localhost:5173).
 
-### 3) Create environment variables
+---
 
-Create a `.env` file in the project root and add the required keys:
+## 🗄️ Database & Schema Integration Guidelines
 
-```env
-VITE_UNSPLASH_KEY=your_unsplash_access_key
-VITE_FIREBASE_API_KEY=your_key
-VITE_FIREBASE_AUTH_DOMAIN=your_domain
-VITE_FIREBASE_PROJECT_ID=your_project
-VITE_FIREBASE_APP_ID=your_app_id
-VITE_SUPABASE_URL=your_url
-VITE_SUPABASE_ANON_KEY=your_key
-VITE_CLOUDINARY_CLOUD_NAME=your_cloud_name
-VITE_CLOUDINARY_UPLOAD_PRESET=your_preset
-VITE_ADMIN_EMAIL=your_email
-```
+FragVerse uses a dual-table structure in Supabase to separate live community wallpapers from items undergoing moderation review:
 
-### 4) Start the app
+- **`pending_wallpapers`**: Stores submissions uploaded by users. Images are hosted on Cloudinary, and metadata (Uploader ID, Category, Title, Tags, Description) is stored here with a status of `pending`.
+- **`wallpapers`**: Stores approved public wallpapers. Once an admin approves a wallpaper in the dashboard, the entry is copied here, and deleted from `pending_wallpapers`.
+- **`favorites`**: Connects `user_id` and `wallpaper_id` to persist user likes.
 
-```bash
-npm run dev
-```
+When modifying code that interacts with these tables:
+* Ensure all database calls are consolidated in [supabaseApi.js](src/services/supabaseApi.js).
+* Always handle unique constraints gracefully (e.g., catching code `23505` when adding duplicate favorites).
+* Keep properties normalized using `normalizeWallpapers` before feeding them to UI state.
 
-Open `http://localhost:5173`
+---
 
-## Contribution Guidelines
+## 🎨 UI & UX Design Policy
 
-### UI and UX
+FragVerse places premium visual quality at its core. When modifying or introducing UI elements:
+- **Design Tokens**: Do not use arbitrary colors or paddings. Use CSS design tokens defined in [index.css](src/index.css) (e.g., `var(--bg)`, `var(--surface)`, `var(--accent)`, `var(--radius-card)`).
+- **Light/Dark Synchrony**: Every component must look stunning in both light and dark themes. Verify contrast and visual hierarchy when shifting states.
+- **Masonry Layout**: Do not modify masonry grids or height calculations without validating column distribution. Ensure items have fallback aspect ratios and sizes to prevent layout shifts.
 
-FragVerse is design-first, so UI consistency matters.
+---
 
-* Maintain the current visual style
-* Keep layouts clean and responsive
-* Avoid unnecessary visual clutter
-* Prioritize smooth interactions and loading states
+## ⚡ Performance Preservation
 
-### Code Style
+- **Avoid Re-renders**: Wrap static buttons, cards, and grid sections in `React.memo` or use `useMemo`/`useCallback` hooks where state updates are frequent.
+- **Stable Intersection Observers**: Infinite scrolling observers must remain stable and utilize `useRef` loading gates. Never alter observer callbacks to trigger infinite fetch loops.
+- **No Junk Logs**: Do not push code containing `console.log` or `console.debug` statements. All print lines should be cleaned before building.
 
-* Write clear and readable React components
-* Prefer reusable components over duplicated code
-* Keep hooks and services modular
-* Use meaningful variable and function names
-* Avoid large unrelated refactors in bug-fix PRs
+---
 
-## Branch Naming
+## 🌿 Contribution Git Workflow
 
-Use descriptive branch names:
+### 1. Branch Naming Conventions
+Create a branch from `main` using these naming rules:
+- `feat/feature-name` (e.g., `feat/google-analytics`)
+- `fix/bug-fix-name` (e.g., `fix/mobile-grid-leak`)
+- `docs/documentation-update` (e.g., `docs/contributing-edit`)
+- `refactor/clean-components` (e.g., `refactor/sidebar-cleanup`)
 
-* `fix/search-scroll-bug`
-* `feat/category-filter`
-* `docs/readme-redesign`
+### 2. Commit Message Guidelines
+Make commits clear and concise:
+- `feat: add tag filtering in search palette`
+- `fix: correct backdrop blur overlap on mobile aside`
+- `docs: update setup guidelines`
 
-## Pull Request Guidelines
+### 3. Pull Request Checklist
+When submitting a Pull Request:
+- [ ] Provide a clear summary of what changed.
+- [ ] Add screenshots or recordings if the PR modifies the UI.
+- [ ] Run `npm run build` locally and ensure it completes with zero errors.
+- [ ] Make sure unused imports and debugging `console.log` statements are fully removed.
 
-When opening a PR:
+---
 
-* explain what changed
-* include screenshots for UI changes
-* mention related issue numbers
-* keep PRs small and review-friendly
-
-Example:
-
-```md
-Fixes #12
-Improves category filtering UI and fixes loading flicker.
-```
-
-## Areas to Contribute
-
-Good contribution areas include:
-
-* UI polish and responsiveness
-* search improvements
-* infinite scroll performance
-* favorites and download UX
-* admin upload flow
-* documentation improvements
-* code cleanup and modularization
-
-## Reporting Bugs
-
-When reporting bugs, include:
-
-* expected behavior
-* actual behavior
-* steps to reproduce
-* screenshots if relevant
-* browser/device details
-
-## Questions
-
-If you are unsure about a contribution, open an issue first so we can align on the best approach.
-
-Thanks for helping improve FragVerse.
+Thank you for helping keep FragVerse stable, fast, and beautiful!

@@ -1,9 +1,7 @@
-import { useEffect } from 'react';
-import { X, Download, ExternalLink, User } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
+import { X, Download, ExternalLink, User, Heart, Tag } from 'lucide-react';
+import WallpaperCard from './WallpaperCard';
 
-// ─────────────────────────────────────────────────────────────────
-// Download helper (same as WallpaperCard)
-// ─────────────────────────────────────────────────────────────────
 const downloadWallpaper = async (url, filename) => {
   try {
     const res = await fetch(url);
@@ -21,14 +19,15 @@ const downloadWallpaper = async (url, filename) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────
-// WallpaperModal
-// Props:
-//   wallpaper {object|null} – selected wallpaper; null = closed
-//   onClose   {function}   – called to close the modal
-// ─────────────────────────────────────────────────────────────────
-const WallpaperModal = ({ wallpaper, onClose }) => {
-  // Close on Escape key
+const WallpaperModal = ({
+  wallpaper,
+  onClose,
+  onToggleFavorite,
+  isFavorited = false,
+  relatedWallpapers = [],
+  onSelectWallpaper,
+  favoriteIds = [],
+}) => {
   useEffect(() => {
     if (!wallpaper) return;
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -36,11 +35,23 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
     return () => window.removeEventListener('keydown', handleKey);
   }, [wallpaper, onClose]);
 
-  // Lock body scroll while open
   useEffect(() => {
     document.body.style.overflow = wallpaper ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [wallpaper]);
+
+  const related = useMemo(() => {
+    if (!wallpaper || !relatedWallpapers.length) return [];
+    return relatedWallpapers
+      .filter((w) => w.id !== wallpaper.id)
+      .filter((w) => {
+        if (wallpaper.category && w.category) {
+          return w.category.toLowerCase() === wallpaper.category.toLowerCase();
+        }
+        return true;
+      })
+      .slice(0, 6);
+  }, [wallpaper, relatedWallpapers]);
 
   if (!wallpaper) return null;
 
@@ -49,13 +60,31 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
     image,
     thumb,
     fullImage,
-    title     = 'Untitled',
-    author    = 'Unknown',
+    title = 'Untitled Wallpaper',
+    author = 'Unknown',
     authorImage,
     authorLink,
-    downloads = 0,
+    category = 'General',
     source,
+    description: rawDescription,
+    tags: rawTags,
   } = wallpaper;
+
+  const tags = Array.isArray(rawTags) && rawTags.length > 0
+    ? rawTags
+    : typeof rawTags === 'string' && rawTags.trim().length > 0
+    ? rawTags.split(',').map((t) => t.trim()).filter(Boolean)
+    : [
+        category,
+        source === 'user' ? 'FragVerse' : 'Unsplash',
+        ...(title ? title.split(' ').slice(0, 2) : []),
+      ].filter(Boolean);
+
+  const description = rawDescription?.trim()
+    ? rawDescription
+    : source === 'user'
+      ? `Shared with the Fragverse Community — ${category} aesthetic by ${author}.`
+      : `High-quality ${category} wallpaper from Unsplash by ${author}.`;
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) onClose();
@@ -66,93 +95,148 @@ const WallpaperModal = ({ wallpaper, onClose }) => {
   };
 
   return (
-    /* Dark overlay */
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8"
-      style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(8px)' }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 lg:p-6 overflow-y-auto"
+      style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)' }}
       onClick={handleOverlayClick}
     >
-      {/* Modal panel */}
       <div
-        className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-dark-800 border border-slate-200 dark:border-purple-900/20 shadow-2xl animate-slide-up transition-colors duration-500"
+        className="relative w-full max-w-6xl my-auto flex flex-col rounded-none sm:rounded-modal overflow-hidden animate-slide-up border border-[var(--border)]"
+        style={{ background: 'var(--surface)', maxHeight: 'min(96vh, 1100px)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Top bar ── */}
-        <div className="flex items-center justify-between px-5 py-3 bg-white dark:bg-dark-800 border-b border-slate-100 dark:border-purple-500/15 flex-shrink-0 transition-colors duration-500">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-[var(--border)] flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Author avatar */}
-            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-dark-600 flex items-center justify-center flex-shrink-0 overflow-hidden transition-colors duration-500">
+            <div className="w-9 h-9 rounded-full bg-[var(--surface-2)] flex items-center justify-center overflow-hidden flex-shrink-0">
               {authorImage ? (
                 <img src={authorImage} alt={author} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-xs font-bold text-slate-800 dark:text-white">
+                <span className="text-xs font-bold text-[var(--text-secondary)]">
                   {author.charAt(0).toUpperCase()}
                 </span>
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate capitalize transition-colors duration-500">{title}</p>
+              <p className="text-sm font-semibold text-[var(--text-primary)] truncate capitalize">{title}</p>
               {authorLink ? (
                 <a
                   href={authorLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-slate-400 hover:text-purple-400 transition-colors flex items-center gap-1"
+                  className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)] flex items-center gap-1"
                 >
                   <User className="w-3 h-3" />
                   {author}
                   <ExternalLink className="w-3 h-3" />
                 </a>
               ) : (
-                <p className="text-xs text-slate-400 flex items-center gap-1">
+                <p className="text-xs text-[var(--text-muted)] flex items-center gap-1">
                   <User className="w-3 h-3" /> {author}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-
-            {/* Download button */}
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/30"
-            >
+          <div className="flex items-center gap-2">
+            {onToggleFavorite && (
+              <button
+                type="button"
+                onClick={() => onToggleFavorite(id)}
+                className={`w-9 h-9 rounded-[10px] flex items-center justify-center border transition-all duration-200 ${
+                  isFavorited
+                    ? 'bg-[var(--accent-tint)] border-[rgba(124,58,237,0.3)] text-red-500'
+                    : 'border-[var(--border)] text-[var(--text-muted)] hover:text-red-500 hover:border-[var(--border-hover)]'
+                }`}
+                title="Favorite"
+              >
+                <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} />
+              </button>
+            )}
+            <button type="button" onClick={handleDownload} className="fv-btn-primary text-sm hidden sm:inline-flex">
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Download</span>
-              <span className="sm:hidden">Save</span>
+              Download
             </button>
-
-            {/* Close button */}
             <button
+              type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all duration-200"
-              title="Close (Esc)"
+              className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-2)]"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* ── Image area ── */}
-        <div className="relative flex-1 overflow-hidden flex items-center justify-center bg-black/40 min-h-0">
-          {source && (
-            <div className={`absolute top-4 left-4 px-3 py-1 rounded-xl text-white font-bold text-[11px] uppercase tracking-wider backdrop-blur-md z-[20] shadow-lg
-              ${source === 'unsplash' ? 'bg-blue-600/90' : 'bg-green-600/90'}`}>
-              {source === 'unsplash' ? 'Unsplash' : 'FragVerse'}
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
+          <div className="relative flex-1 bg-black/50 flex items-center justify-center min-h-[40vh] lg:min-h-0">
+            {source && (
+              <div
+                className={`absolute top-4 left-4 z-20 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-md ${
+                  source === 'unsplash' ? 'bg-black/50' : 'bg-[rgba(124,58,237,0.9)]'
+                }`}
+              >
+                {source === 'unsplash' ? 'Unsplash' : 'FragVerse'}
+              </div>
+            )}
+            <img
+              src={fullImage || image || thumb}
+              alt={title}
+              className="w-full h-full object-contain max-h-[55vh] lg:max-h-[70vh]"
+            />
+          </div>
+
+          <aside className="w-full lg:w-[300px] flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--border)] overflow-y-auto p-5 space-y-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+                About
+              </p>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{description}</p>
             </div>
-          )}
-          <img
-            src={image || thumb}
-            alt={title}
-            className="w-full h-full object-contain max-h-[75vh]"
-            style={{ objectFit: 'contain' }}
-          />
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2 flex items-center gap-1">
+                <Tag className="w-3 h-3" /> Tags
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[var(--surface-2)] text-[var(--text-secondary)] border border-[var(--border)]"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <button type="button" onClick={handleDownload} className="fv-btn-primary w-full sm:hidden">
+              <Download className="w-4 h-4" />
+              Download wallpaper
+            </button>
+          </aside>
         </div>
 
-        {/* ── Bottom info bar ── */}
-        <div className="px-5 py-3 bg-white dark:bg-dark-800 border-t border-slate-100 dark:border-purple-500/15 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 flex-shrink-0 transition-colors duration-500">
-          <span>Click outside or press <kbd className="bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-mono">Esc</kbd> to close</span>
+        {related.length > 0 && (
+          <div className="border-t border-[var(--border)] px-4 sm:px-5 py-4 flex-shrink-0">
+            <p className="text-sm font-bold text-[var(--text-primary)] mb-3">Related wallpapers</p>
+            <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
+              {related.map((w, i) => (
+                <div key={w.id} className="flex-shrink-0 w-[140px]">
+                  <WallpaperCard
+                    wallpaper={w}
+                    index={i}
+                    layout="masonry"
+                    onCardClick={() => onSelectWallpaper?.(w)}
+                    onToggleFavorite={onToggleFavorite}
+                    isFavorited={favoriteIds.includes(w.id)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="px-5 py-2 border-t border-[var(--border)] text-[11px] text-[var(--text-muted)] hidden sm:block">
+          Press <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface-2)] border border-[var(--border)] font-mono text-[10px]">Esc</kbd> to close
         </div>
       </div>
     </div>

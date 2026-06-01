@@ -1,322 +1,605 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchTrendingWallpapers, searchWallpapers } from '../services/unsplashApi';
 import { fetchSupabaseWallpapers } from '../services/supabaseApi';
+import { shuffleArray, createSeededRandom } from '../constants/discovery';
 
-const FRAGVERSE_SLOT_PROBABILITY = 0.05;
-const FRAGVERSE_COOLDOWN_MIN = 8;
-const FRAGVERSE_COOLDOWN_MAX = 12;
-const FRAGVERSE_RECENT_STORAGE_KEY = 'fragverse_recent_ids_v1';
-const RECENT_FRAGVERSE_CACHE_SIZE = 120;
+const EXPLORE_QUERIES = [
+  'minimalist desktop', 'neon cyberpunk', 'cinematic landscape',
+  'cozy lofi', 'celestial space', 'dark urban', 'pastel gradient',
+  'nature aesthetic', 'architecture clean', 'moody rainy',
+  'abstract oil painting', 'retro wave synth', 'organic textures',
+  'urban exploring', 'mountain peak', 'forest fog', 'ocean waves',
+  'minimalist interior', 'cyberpunk girl', 'future tech',
+  'vintage film', 'street photography', 'brutalist architecture'
+];
 
-function loadRecentFragverseIds() {
-  try {
-    const raw = localStorage.getItem(FRAGVERSE_RECENT_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(String);
-  } catch {
-    return [];
-  }
-}
+const QUERY_MAPPING = {
+  'architecture': 'architecture clean aesthetic',
+  'city': 'city aesthetic landscape',
+  'anime': 'anime wallpaper landscape',
+  'minimal': 'minimalist desktop',
+  'space': 'celestial space landscape',
+  'cars': 'supercars landscape wallpaper',
+  'cozy': 'cozy lofi aesthetic',
+  'dreamy': 'dreamy wallpaper aesthetic',
+  'gaming': 'gaming setup rgb desktop',
+  'study': 'study lofi aesthetic',
+  'night drive': 'night drive aesthetic'
+};
 
-function persistRecentFragverseIds(ids) {
-  try {
-    const trimmed = ids.slice(-RECENT_FRAGVERSE_CACHE_SIZE);
-    localStorage.setItem(FRAGVERSE_RECENT_STORAGE_KEY, JSON.stringify(trimmed));
-  } catch {
-    // Ignore storage write issues (private mode/quota).
-  }
-}
+const CATEGORIES_LIST = [
+  'Anime', 'Nature', 'Minimal', 'Cars', 'Space', 'Architecture',
+  'Cyberpunk', 'Dark', 'Dreamy', 'City', 'Cozy', 'Abstract',
+  'Gaming', 'Formula 1', 'Rainy', 'Night Drive',
+  // Additional categories from CategoriesDiscovery
+  'Purple Aesthetic', 'Calm', 'Productivity', 'Study',
+].map(c => c.toLowerCase());
 
-function ensureRecentFragverseIdsSet(recentRef) {
-  if (recentRef.current instanceof Set) return;
-  const cur = recentRef.current;
-  recentRef.current = new Set(
-    Array.isArray(cur) ? cur.map(String) : []
-  );
-}
+const isCategoryQuery = (q) => q ? CATEGORIES_LIST.includes(q.toLowerCase().trim()) : false;
 
-function isFragverseWallpaper(w) {
-  return w && (w.source === 'user' || w.isSupabase === true);
-}
-
-function randomCooldownSlots() {
-  return (
-    Math.floor(Math.random() * (FRAGVERSE_COOLDOWN_MAX - FRAGVERSE_COOLDOWN_MIN + 1)) +
-    FRAGVERSE_COOLDOWN_MIN
-  );
-}
-
-// ── Shuffle Helper (Fisher-Yates) ────────────────────────────────
-function shuffleArray(array, randomFn = Math.random) {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(randomFn() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-// ─────────────────────────────────────────────────────────────────
-// useWallpapers – custom hook
-//
-// Returns:
-//   wallpapers  {array}    – normalized photo objects
-//   loading     {boolean}  – true while fetching
-//   error       {string|null} – error message or null
-//   search      {function} – call with a query string to search
-//   clearSearch {function} – resets back to trending
-//   query       {string}   – current active search query
-// ─────────────────────────────────────────────────────────────────
 const useWallpapers = () => {
+  const [sessionSeed]      = useState(() => Date.now() ^ Math.floor(Math.random() * 1000000));
+  const searchCacheRef     = useRef({}); // In-memory cache for Unsplash search queries
   const [userWallpapers,    setUserWallpapers]    = useState([]);
-  const [displayWallpapers, setDisplayWallpapers] = useState([]);
+  const [homeFeed,          setHomeFeed]          = useState([]);
+  const [exploreFeed,       setExploreFeed]       = useState([]);
+  const [categoriesFeed,    setCategoriesFeed]    = useState([]);
   const [searchResults,     setSearchResults]     = useState([]);
+  
   const [loading,           setLoading]           = useState(false);
+  const [homeLoading,       setHomeLoading]       = useState(false);
+  const [exploreLoading,    setExploreLoading]    = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [error,             setError]             = useState(null);
   const [query,             setQuery]             = useState('');
-  const [page,              setPage]              = useState(1);
-  const [hasMore,           setHasMore]           = useState(true);
   
-  const requestIdRef = useRef(0);
-  const isFetchingRef = useRef(false);
-  const userWallpapersRef = useRef([]); // Ref for stable access inside callbacks
-  const shownIdsRef = useRef(new Set());
-  const shownFragverseInFeedRef = useRef(new Set());
-  const fragverseCooldownRemainingRef = useRef(0);
-  const recentFragverseIdsRef = useRef(new Set(loadRecentFragverseIds()));
+  const [homePage,          setHomePage]          = useState(1);
+  const [explorePage,       setExplorePage]       = useState(1);
+  const [categoriesPage,    setCategoriesPage]    = useState(1);
+  const [communityPage,     setCommunityPage]     = useState(1);
+  const [searchHasMore,     setSearchHasMore]     = useState(true);
+  const [communityHasMore,  setCommunityHasMore]  = useState(true);
 
-  // Sync ref with state
+  // ── Stable Refs to Prevent Infinite Loops & Race Conditions ──
+  const userWallpapersRef = useRef([]);
+  const homeFeedRef = useRef([]);
+  const exploreFeedRef = useRef([]);
+  const homePageRef = useRef(1);
+  const explorePageRef = useRef(1);
+  const categoriesPageRef = useRef(1);
+  const communityPageRef = useRef(1);
+  const categoriesRequestSeq = useRef(0);
+  // Per-feed loading refs — prevent one feed's in-flight request from blocking another
+  const homeLoadingRef       = useRef(false);
+  const exploreLoadingRef    = useRef(false);
+  const categoriesLoadingRef = useRef(false);
+  const communityLoadingRef  = useRef(false);
+  // Shared UI loading ref (for skeleton display gating)
+  const loadingRef = useRef(false);
+
+  const syncGlobalLoading = useCallback(() => {
+    setLoading(
+      homeLoadingRef.current ||
+      exploreLoadingRef.current ||
+      categoriesLoadingRef.current ||
+      communityLoadingRef.current
+    );
+  }, []);
+
   useEffect(() => {
     userWallpapersRef.current = userWallpapers;
   }, [userWallpapers]);
 
+  useEffect(() => {
+    homeFeedRef.current = homeFeed;
+  }, [homeFeed]);
+
+  useEffect(() => {
+    exploreFeedRef.current = exploreFeed;
+  }, [exploreFeed]);
+
   const getUniqueById = useCallback((items) => {
-    return Array.from(new Map(items.map(item => [item.id, item])).values());
+    return Array.from(
+      new Map(items.filter(item => item != null && item.id != null).map(item => [item.id, item])).values()
+    );
   }, []);
 
-  const buildMixedFeed = useCallback((unsplashItems, fragverseItems, targetSize) => {
-    const totalTarget = Math.max(1, targetSize || unsplashItems.length || 20);
-    const uniqueUnsplash = getUniqueById(unsplashItems);
-    const uniqueFragverse = getUniqueById(fragverseItems).filter(isFragverseWallpaper);
+  const getPopularScore = (w) => (w.likes || 0) + (w.downloads || 0) * 1.5;
 
-    if (uniqueUnsplash.length === 0 && uniqueFragverse.length > 0) {
-      const fallback = shuffleArray(
-        uniqueFragverse.filter(w => !shownFragverseInFeedRef.current.has(w.id))
-      ).slice(0, totalTarget);
-      fallback.forEach(w => {
-        shownFragverseInFeedRef.current.add(w.id);
-        shownIdsRef.current.add(w.id);
-      });
-      return fallback;
+  // ── 1. Load Home Feed (Curated, Popular + Recent) ───────────────────
+  const loadHomeFeed = useCallback(async (pageNum = 1) => {
+    if (homeLoadingRef.current) {
+      return;
     }
-
-    const maxFragverseInBatch = Math.min(3, Math.max(0, Math.floor(totalTarget / 10)));
-    let fragInBatch = 0;
-    let cooldown = fragverseCooldownRemainingRef.current;
-
-    let unsplashPool = shuffleArray(
-      uniqueUnsplash.filter(u => !shownIdsRef.current.has(u.id))
-    );
-    if (unsplashPool.length === 0) {
-      unsplashPool = shuffleArray([...uniqueUnsplash]);
-    }
-    let uIdx = 0;
-
-    const fragPool = shuffleArray(
-      uniqueFragverse.filter(w => !shownFragverseInFeedRef.current.has(w.id))
-    );
-    let fragIdx = 0;
-
-    const takeUnsplash = () => {
-      while (uIdx >= unsplashPool.length) {
-        unsplashPool = shuffleArray(
-          uniqueUnsplash.filter(u => !shownIdsRef.current.has(u.id))
-        );
-        if (unsplashPool.length === 0) {
-          unsplashPool = shuffleArray([...uniqueUnsplash]);
-        }
-        uIdx = 0;
-      }
-      const w = unsplashPool[uIdx++];
-      shownIdsRef.current.add(w.id);
-      return w;
-    };
-
-    const result = [];
-    for (let slot = 0; slot < totalTarget; slot++) {
-      let pick = null;
-
-      if (cooldown > 0) {
-        cooldown--;
-        pick = takeUnsplash();
-      } else if (
-        fragInBatch < maxFragverseInBatch &&
-        fragIdx < fragPool.length &&
-        Math.random() < FRAGVERSE_SLOT_PROBABILITY
-      ) {
-        pick = fragPool[fragIdx++];
-        fragInBatch++;
-        shownFragverseInFeedRef.current.add(pick.id);
-        shownIdsRef.current.add(pick.id);
-        cooldown = randomCooldownSlots();
-      } else {
-        pick = takeUnsplash();
-      }
-
-      result.push(pick);
-    }
-
-    fragverseCooldownRemainingRef.current = cooldown;
-    return result;
-  }, [getUniqueById]);
-
-  // 3. Wallpaper fetching and weighted mixing
-  const loadPhotos = useCallback(async (searchQuery = '', pageNum = 1) => {
-    // 1. NON-REACTIVE FETCHING LOCK
-    if (isFetchingRef.current) return;
-    
-    isFetchingRef.current = true;
-    const currentRequestId = ++requestIdRef.current;
-
-    setLoading(true);
+    if (pageNum === 1) homePageRef.current = 1;
+    homeLoadingRef.current = true;
+    loadingRef.current = true;
+    setHomeLoading(true);
+    syncGlobalLoading();
     setError(null);
-
     try {
-      const shouldRefreshFragverse = pageNum === 1;
-      const [apiData, supabaseData] = await Promise.all([
-        searchQuery.trim()
-          ? searchWallpapers(searchQuery, pageNum)
-          : fetchTrendingWallpapers(pageNum),
-        shouldRefreshFragverse
-          ? fetchSupabaseWallpapers()
-          : Promise.resolve(userWallpapersRef.current)
-      ]);
-      
-      // ABORT IF STALE
-      if (currentRequestId !== requestIdRef.current) {
-        return;
+      const pageSize = 30;
+      // Use sessionSeed to vary the starting page or order of trending wallpapers slightly
+      const homeRng = createSeededRandom(sessionSeed + pageNum * 7);
+      const unsplashPage = pageNum === 1 ? (Math.floor(homeRng() * 15) + 1) : pageNum;
+
+      let unsplashData = [];
+      let supabaseData = [];
+
+      try {
+        const [uData, sData] = await Promise.all([
+          fetchTrendingWallpapers(unsplashPage, 20),
+          fetchSupabaseWallpapers(null, pageNum, pageSize) // Increased batch size for more variety
+        ]);
+        unsplashData = uData;
+        supabaseData = sData;
+      } catch (apiErr) {
+        console.error("Home feed Unsplash fetch failed, attempting Supabase fallback:", apiErr);
+        supabaseData = await fetchSupabaseWallpapers(null, pageNum, pageSize);
+        unsplashData = [];
       }
 
-      let currentUserWallpapers = userWallpapersRef.current;
-      if (shouldRefreshFragverse) {
-        currentUserWallpapers = shuffleArray(supabaseData || []);
-        setUserWallpapers(currentUserWallpapers);
-      }
+      // Update community pool with new Supabase data - always append uniquely to prevent race conditions
+      setUserWallpapers(prev => getUniqueById([...prev, ...supabaseData]));
+      setCommunityHasMore(supabaseData.length >= pageSize);
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const localMatches = currentUserWallpapers.filter(w => (
-          (w.title && w.title.toLowerCase().includes(q)) ||
-          (w.category && w.category.toLowerCase().includes(q)) ||
-          (w.author && w.author.toLowerCase().includes(q))
-        ));
+      // Shuffle Unsplash data slightly for more freshness
+      let mixed = shuffleArray([...unsplashData], homeRng);
 
-        const mixedBatch = buildMixedFeed(apiData, localMatches, apiData.length || 20);
-
-        setSearchResults(prev => {
-          if (pageNum === 1) return mixedBatch;
-          return getUniqueById([...prev, ...mixedBatch]);
+      if (mixed.length === 0) {
+        // Fallback: If Unsplash failed, use community wallpapers
+        mixed = shuffleArray([...supabaseData], homeRng).map(item => ({ ...item, status: 'approved' }));
+      } else if (supabaseData.length > 0) {
+        // Blending: Insert fewer community wallpapers (1 to 2) for Unsplash prominence and high randomization
+        const communityRng = createSeededRandom(sessionSeed + pageNum * 127 + 555);
+        
+        // Use a mix of current batch and previously loaded wallpapers
+        const pool = getUniqueById([...userWallpapersRef.current, ...supabaseData]);
+        const shuffledPool = shuffleArray([...pool], communityRng);
+        
+        // Pick a randomized count of 1 to 2 community items
+        const numInsertions = Math.min(shuffledPool.length, Math.floor(communityRng() * 2) + 1);
+        const toInsert = shuffledPool.slice(0, numInsertions);
+        
+        // Randomize insertion positions (avoiding first 2 slots for Unsplash prominence)
+        const positions = [];
+        const posRng = createSeededRandom(sessionSeed + pageNum * 89 + 999);
+        for (let i = 0; i < toInsert.length; i++) {
+          const minPos = 2;
+          const maxPos = mixed.length;
+          const pos = minPos + Math.floor(posRng() * (maxPos - minPos));
+          positions.push(pos);
+        }
+        // Sort descending to splice without shifting indices
+        positions.sort((a, b) => b - a);
+        
+        positions.forEach((pos, idx) => {
+          if (toInsert[idx]) {
+            mixed.splice(pos, 0, { ...toInsert[idx], status: 'approved' });
+          }
         });
-      } else {
-        const mixedBatch = buildMixedFeed(apiData, currentUserWallpapers, apiData.length || 20);
-        setDisplayWallpapers(prev => {
-          if (pageNum === 1) return mixedBatch;
-          return getUniqueById([...prev, ...mixedBatch]);
-        });
       }
-      
-      setHasMore(apiData.length > 0);
+
+      setHomeFeed(prev => {
+        const next = getUniqueById(pageNum === 1 ? mixed : [...prev, ...mixed]);
+        return next;
+      });
     } catch (err) {
-      if (currentRequestId === requestIdRef.current) {
-        setError(err.message || 'Failed to load wallpapers.');
-      }
+      console.error("Home feed fetch error:", err);
+      setError(err.message || 'Failed to load Home wallpapers.');
     } finally {
-      if (currentRequestId === requestIdRef.current) {
-        setLoading(false);
-        isFetchingRef.current = false;
+      homeLoadingRef.current = false;
+      loadingRef.current = exploreLoadingRef.current || categoriesLoadingRef.current;
+      setHomeLoading(false);
+      syncGlobalLoading();
+    }
+  }, [getUniqueById, syncGlobalLoading, sessionSeed]);
+
+  // ── 2. Load Explore Feed (Endless, Diverse, Balanced) ───────────────
+  const loadExploreFeed = useCallback(async (pageNum = 1) => {
+    if (exploreLoadingRef.current) {
+      return;
+    }
+    if (pageNum === 1) explorePageRef.current = 1;
+    exploreLoadingRef.current = true;
+    loadingRef.current = true;
+    setExploreLoading(true);
+    syncGlobalLoading();
+    setError(null);
+    try {
+      const pageSize = 30;
+      // Create a shuffle of EXPLORE_QUERIES based on sessionSeed
+      const queryRng = createSeededRandom(sessionSeed);
+      const shuffledQueries = shuffleArray([...EXPLORE_QUERIES], queryRng);
+      
+      const queryIdx = (pageNum - 1) % shuffledQueries.length;
+      const exploreQuery = shuffledQueries[queryIdx];
+
+      const exploreRng = createSeededRandom(sessionSeed + pageNum * 31 + queryIdx * 17);
+      const stableUnsplashPage = Math.floor(exploreRng() * 4) + 1;
+
+      let unsplashData = [];
+      let supabaseData = [];
+
+      try {
+        const [uData, sData] = await Promise.all([
+          searchWallpapers(exploreQuery, stableUnsplashPage, 20),
+          fetchSupabaseWallpapers(null, pageNum, pageSize) // Increased for more variety
+        ]);
+        unsplashData = uData;
+        supabaseData = sData;
+      } catch (apiErr) {
+        console.error("Explore feed Unsplash fetch failed, using community fallback:", apiErr);
+        unsplashData = [];
+        supabaseData = await fetchSupabaseWallpapers(null, pageNum, pageSize);
       }
-    }
-  }, [buildMixedFeed, getUniqueById]); // Stable callback
 
-  // 5. FIX FETCH TIMING (Paginate when page state increases)
-  useEffect(() => {
-    if (page > 1) {
-      loadPhotos(query, page);
-    }
-  }, [page, loadPhotos, query]);
+      // Update community pool with new Supabase data - always append uniquely
+      setUserWallpapers(prev => getUniqueById([...prev, ...supabaseData]));
+      setCommunityHasMore(supabaseData.length >= pageSize);
 
-  // RESET ON NEW SEARCH
+      let communityPool = pageNum === 1 ? supabaseData : userWallpapersRef.current;
+
+      // Keep all Unsplash results — homeIds filtering was cutting ~20 results to ~8
+      // Explore uses different search queries than Home so overlap is naturally minimal
+      const mixed = shuffleArray([...unsplashData], exploreRng);
+
+      // Interleave community items into the explore feed
+      const existingExploreIds = new Set(exploreFeedRef.current.filter(w => w != null && w.id != null).map(w => w.id));
+      const freshCommunity = supabaseData.filter(w => w != null && w.id != null && !existingExploreIds.has(w.id));
+      const communityRng = createSeededRandom(sessionSeed + pageNum * 53);
+      const shuffledCommunity = shuffleArray(freshCommunity, communityRng);
+
+      let inserted = 0;
+      let cIdx = 0;
+      for (let i = 2 + Math.floor(exploreRng() * 2); i < mixed.length && cIdx < shuffledCommunity.length && inserted < 8; i += 3 + Math.floor(exploreRng() * 2)) {
+        mixed.splice(i, 0, { ...shuffledCommunity[cIdx++], status: 'approved' });
+        inserted++;
+        i++;
+      }
+      // Append any remaining community items
+      while (cIdx < shuffledCommunity.length && inserted < 8 && mixed.length < 28) {
+        mixed.push({ ...shuffledCommunity[cIdx++], status: 'approved' });
+        inserted++;
+      }
+
+      setExploreFeed(prev => {
+        const next = getUniqueById(pageNum === 1 ? mixed : [...prev, ...mixed]);
+        return next;
+      });
+    } catch (err) {
+      console.error("Explore feed fetch error:", err);
+      setError(err.message || 'Failed to load Explore wallpapers.');
+    } finally {
+      exploreLoadingRef.current = false;
+      loadingRef.current = homeLoadingRef.current || categoriesLoadingRef.current;
+      setExploreLoading(false);
+      syncGlobalLoading();
+    }
+  }, [getUniqueById, syncGlobalLoading, sessionSeed]);
+
+  // ── 3. Load Search/Mood Results (Paginated on request) ─────────────
+  const loadSearchPhotos = useCallback(async (searchQuery = '', pageNum = 1) => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    // Per-feed gate for categories
+    if (categoriesLoadingRef.current && pageNum !== 1) {
+      return;
+    }
+    const requestQuery = QUERY_MAPPING[searchQuery.toLowerCase()] || searchQuery;
+    const cacheKey = `${requestQuery}_${pageNum}`;
+
+    // Cache lookup
+    if (searchCacheRef.current[cacheKey]) {
+      const cached = searchCacheRef.current[cacheKey];
+      
+      setSearchResults(prev => {
+        const next = pageNum === 1 ? cached.data : getUniqueById([...prev, ...cached.data]);
+        return next;
+      });
+      setSearchHasMore(cached.hasMore);
+      categoriesLoadingRef.current = false;
+      setCategoriesLoading(false);
+      syncGlobalLoading();
+      return;
+    }
+    categoriesLoadingRef.current = true;
+    loadingRef.current = true;
+    setCategoriesLoading(true);
+    syncGlobalLoading();
+    setError(null);
+    const requestSeq = pageNum === 1
+      ? ++categoriesRequestSeq.current
+      : categoriesRequestSeq.current;
+    // Reset hasMore on a fresh search so switching moods doesn't permanently halt the observer
+    if (pageNum === 1) setSearchHasMore(true);
+    try {
+      const pageSize = 30; // Standardized to 30 for Supabase consistency
+      let apiData = [];
+      let supabaseData = [];
+      const isCat = isCategoryQuery(searchQuery);
+
+      try {
+        const [aData, sData] = await Promise.all([
+          searchWallpapers(requestQuery, pageNum, 20),
+          fetchSupabaseWallpapers(searchQuery, pageNum, pageSize, isCat)
+        ]);
+        apiData = aData;
+        supabaseData = sData;
+      } catch (apiErr) {
+        console.error("Search Unsplash fetch failed, using community fallback:", apiErr);
+        apiData = [];
+        supabaseData = await fetchSupabaseWallpapers(searchQuery, pageNum, pageSize, isCat);
+      }
+
+      // Update community pool with new Supabase data - always append uniquely
+      setUserWallpapers(prev => getUniqueById([...prev, ...supabaseData]));
+      setCommunityHasMore(supabaseData.length >= pageSize);
+
+      let mixed;
+      if (pageNum === 1) {
+        // Combine results. Supabase matches are prioritized or mixed.
+        if (supabaseData.length > 0) {
+          mixed = [...supabaseData, ...apiData];
+        } else {
+          mixed = apiData;
+        }
+      } else {
+        // For subsequent pages, combine Supabase and Unsplash results
+        mixed = [...supabaseData, ...apiData];
+      }
+
+      if (requestSeq !== categoriesRequestSeq.current) return;
+
+      // Cache the computed result (including fallbacks or whatever was actually displayed)
+      // Determine hasMore based on whether we got full pages from both sources
+      const hasMoreSupabase = supabaseData.length === pageSize;
+      const hasMoreUnsplash = apiData.length === 20;
+      const hasMoreResults = hasMoreSupabase || hasMoreUnsplash;
+      
+      searchCacheRef.current[cacheKey] = {
+        data: mixed,
+        hasMore: hasMoreResults
+      };
+
+      setSearchResults(prev => {
+        const next = getUniqueById(pageNum === 1 ? mixed : [...prev, ...mixed]);
+        return next;
+      });
+      // Set hasMore based on whether we got full pages
+      setSearchHasMore(hasMoreResults);
+    } catch (err) {
+      console.error("Search fetch error:", err);
+      setError(err.message || 'Failed to search wallpapers.');
+      setSearchHasMore(false);
+    } finally {
+      if (requestSeq !== categoriesRequestSeq.current) return;
+      categoriesLoadingRef.current = false;
+      loadingRef.current = homeLoadingRef.current || exploreLoadingRef.current;
+      setCategoriesLoading(false);
+      syncGlobalLoading();
+    }
+  }, [getUniqueById, syncGlobalLoading]);
+
+  // ── 4. Load Community Wallpapers (FragVerse Filter) ────────────────
+  const loadCommunityWallpapers = useCallback(async (pageNum = 1, searchQuery = '') => {
+    if (communityLoadingRef.current) {
+      return;
+    }
+    if (pageNum === 1) communityPageRef.current = 1;
+    communityLoadingRef.current = true;
+    loadingRef.current = true;
+    setLoading(true);
+    syncGlobalLoading();
+    setError(null);
+    try {
+      const pageSize = 30;
+      const isCat = isCategoryQuery(searchQuery);
+      // Fetch wallpapers with category filter or general search from Supabase
+      const supabaseData = await fetchSupabaseWallpapers(searchQuery || null, pageNum, pageSize, isCat);
+      
+      let processedBatch = [...supabaseData];
+      
+      // Shuffle the incoming batch for more variety in position (only for non-search views)
+      if (pageNum === 1 && !searchQuery.trim()) {
+        const communityRng = createSeededRandom(sessionSeed + pageNum * 211);
+        processedBatch = shuffleArray(processedBatch, communityRng);
+      }
+
+      setUserWallpapers(prev => {
+        // Always use getUniqueById to prevent duplicates and race conditions
+        const next = getUniqueById([...prev, ...processedBatch]);
+        return next;
+      });
+      
+      // Update hasMore based on whether we got a full page from Supabase
+      setCommunityHasMore(supabaseData.length >= pageSize);
+    } catch (err) {
+      console.error("Community wallpapers fetch error:", err);
+      setError(err.message || 'Failed to load community wallpapers.');
+      setCommunityHasMore(false);
+    } finally {
+      communityLoadingRef.current = false;
+      loadingRef.current = homeLoadingRef.current || exploreLoadingRef.current || categoriesLoadingRef.current;
+      setLoading(false);
+      syncGlobalLoading();
+    }
+  }, [getUniqueById, syncGlobalLoading, sessionSeed]);
+
+  // ── 5. Lifecycle Mount / Synchronization ───────────────────────────
+  // Handle all initial mounts, search query changes, and search query clears in a single robust effect
   useEffect(() => {
-    setPage(1);
-    setSearchResults([]);
-    setHasMore(true);
     if (query.trim()) {
-      loadPhotos(query, 1);
+      setSearchResults([]);
+      loadSearchPhotos(query, 1);
+      // Also reset community feed for the new search
+      setUserWallpapers([]);
+      loadCommunityWallpapers(1, query);
+    } else {
+      setSearchResults([]);
+      categoriesLoadingRef.current = false;
+      setCategoriesLoading(false);
+      syncGlobalLoading();
+      loadHomeFeed(1);
+      loadExploreFeed(1);
+      loadCommunityWallpapers(1, '');
     }
-  }, [query, loadPhotos]);
+  }, [query, loadSearchPhotos, loadHomeFeed, loadExploreFeed, loadCommunityWallpapers, syncGlobalLoading]);
 
-  // Load Unsplash on mount (only for API part)
-  useEffect(() => {
-    loadPhotos('', 1);
-  }, [loadPhotos]);
+  // ── 6. Expose Page-Aware Feed Decoupling ───────────────────────────
+  const homeWallpapers = useMemo(() => {
+    return query.trim() ? searchResults : homeFeed;
+  }, [query, searchResults, homeFeed]);
 
-  // Combined List for UI (Minimalistic Memo)
-  const wallpapers = useMemo(() => {
-    return query.trim() ? searchResults : displayWallpapers;
-  }, [query, searchResults, displayWallpapers]);
+  const exploreWallpapers = useMemo(() => {
+    return query.trim() ? searchResults : exploreFeed;
+  }, [query, searchResults, exploreFeed]);
 
-  // Search or category change resets everything
+  const categoriesWallpapers = useMemo(() => {
+    return query.trim() ? searchResults : categoriesFeed;
+  }, [query, searchResults, categoriesFeed]);
+
   const search = useCallback((q) => {
     setQuery(q);
+    setHomePage(1);
+    setExplorePage(1);
+    setCategoriesPage(1);
+    homePageRef.current = 1;
+    explorePageRef.current = 1;
+    categoriesPageRef.current = 1;
   }, []);
-
-  const loadMore = useCallback(() => {
-    if (loading || !hasMore) return;
-    setPage(prev => prev + 1);
-  }, [loading, hasMore]);
 
   const clearSearch = useCallback(() => {
     setQuery('');
-    setPage(1);
-    setHasMore(true);
-    loadPhotos('', 1);
-  }, [loadPhotos]);
+    setHomePage(1);
+    setExplorePage(1);
+    setCategoriesPage(1);
+    homePageRef.current = 1;
+    explorePageRef.current = 1;
+    categoriesPageRef.current = 1;
+    setSearchResults([]);
+    categoriesLoadingRef.current = false;
+    setCategoriesLoading(false);
+    syncGlobalLoading();
+  }, [syncGlobalLoading]);
 
-  // ── Prepend an uploaded wallpaper ──
+  // Page-specific paginators — each uses its own per-feed loading ref
+  const loadMoreHome = useCallback(() => {
+    if (homeLoadingRef.current) {
+      return;
+    }
+    const next = homePageRef.current + 1;
+    homePageRef.current = next;
+    setHomePage(next);
+    if (query.trim()) {
+      loadSearchPhotos(query, next);
+    } else {
+      loadHomeFeed(next);
+    }
+  }, [query, loadSearchPhotos, loadHomeFeed]);
+
+  const loadMoreExplore = useCallback(() => {
+    if (exploreLoadingRef.current) {
+      return;
+    }
+    const next = explorePageRef.current + 1;
+    explorePageRef.current = next;
+    setExplorePage(next);
+    if (query.trim()) {
+      loadSearchPhotos(query, next);
+    } else {
+      loadExploreFeed(next);
+    }
+  }, [query, loadSearchPhotos, loadExploreFeed]);
+
+  const loadMoreCategories = useCallback(() => {
+    if (categoriesLoadingRef.current) {
+      return;
+    }
+    if (!query.trim()) {
+      return;
+    }
+    const next = categoriesPageRef.current + 1;
+    categoriesPageRef.current = next;
+    setCategoriesPage(next);
+    loadSearchPhotos(query, next);
+  }, [query, loadSearchPhotos]);
+
+  const loadMoreCommunity = useCallback(() => {
+    if (communityLoadingRef.current) {
+      return;
+    }
+    const next = communityPageRef.current + 1;
+    communityPageRef.current = next;
+    setCommunityPage(next);
+    loadCommunityWallpapers(next, query);
+  }, [loadCommunityWallpapers, query]);
+
+  // ── 7. Curation Helpers (Prepend/Remove) ──────────────────────────
   const prependWallpaper = useCallback((wallpaper) => {
-    ensureRecentFragverseIdsSet(recentFragverseIdsRef);
-    recentFragverseIdsRef.current.add(String(wallpaper.id));
-    const arr = Array.from(recentFragverseIdsRef.current).slice(-RECENT_FRAGVERSE_CACHE_SIZE);
-    recentFragverseIdsRef.current = new Set(arr);
-    persistRecentFragverseIds(arr);
-    shownIdsRef.current.add(wallpaper.id);
-    shownFragverseInFeedRef.current.add(wallpaper.id);
     setUserWallpapers(prev => [wallpaper, ...prev]);
-    setDisplayWallpapers(prev => [wallpaper, ...prev]);
-    setSearchResults(prev => [wallpaper, ...prev]);
+    setHomeFeed(prev => [wallpaper, ...prev]);
+    setExploreFeed(prev => [wallpaper, ...prev]);
+    // Clear search cache so new uploads show up immediately in categories
+    searchCacheRef.current = {};
   }, []);
 
-  // ── Remove a deleted wallpaper ──
   const removeWallpaper = useCallback((id) => {
-    ensureRecentFragverseIdsSet(recentFragverseIdsRef);
-    shownIdsRef.current.delete(id);
-    shownFragverseInFeedRef.current.delete(id);
-    recentFragverseIdsRef.current.delete(String(id));
-    const filteredRecent = Array.from(recentFragverseIdsRef.current);
-    persistRecentFragverseIds(filteredRecent);
-    setUserWallpapers(prev => prev.filter(w => w.id !== id));
-    setDisplayWallpapers(prev => prev.filter(w => w.id !== id));
-    setSearchResults(prev => prev.filter(w => w.id !== id));
+    const filterFn = w => w != null && w.id != null && w.id !== id;
+    setUserWallpapers(prev => prev.filter(filterFn));
+    setHomeFeed(prev => prev.filter(filterFn));
+    setExploreFeed(prev => prev.filter(filterFn));
+    setSearchResults(prev => prev.filter(filterFn));
   }, []);
-  
 
+  const isReloading = loading && (homePage === 1 || explorePage === 1 || categoriesPage === 1);
 
-  return { 
-    wallpapers,
+  // For Home/Explore: always true (endless). For category/search: track Unsplash result presence.
+  // Per-page hasMore for finer-grained observer control
+  const homeHasMore    = true; // Unsplash trending never truly ends
+  const exploreHasMore = true; // Explore cycles through 12 queries endlessly
+  const categoriesHasMore = query.trim() ? searchHasMore : false;
+
+  return {
+    homeWallpapers,
+    exploreWallpapers,
+    categoriesWallpapers,
+    searchResults,
     userWallpapers,
-    loading, error, query, search, clearSearch, loadMore, hasMore, 
-    prependWallpaper, removeWallpaper
+    loading,
+    homeLoading,
+    exploreLoading,
+    categoriesLoading,
+    error,
+    query,
+    search,
+    clearSearch,
+    loadMoreHome,
+    loadMoreExplore,
+    loadMoreCategories,
+    loadMoreCommunity,
+    loadCommunityWallpapers,
+    homePage,
+    explorePage,
+    categoriesPage,
+    communityPage,
+    // Individual hasMore flags so each page's observer can be independently controlled
+    homeHasMore,
+    exploreHasMore,
+    categoriesHasMore,
+    communityHasMore,
+    // Unified hasMore for backwards compatibility
+    hasMore: query.trim() ? searchHasMore : true,
+    prependWallpaper,
+    removeWallpaper,
+    isReloading,
+    sessionSeed,
+    homeLoadingRef,
+    exploreLoadingRef,
+    categoriesLoadingRef,
+    communityLoadingRef
   };
 };
 

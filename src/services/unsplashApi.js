@@ -18,7 +18,9 @@ const normalizePhoto = (photo) => ({
   id:          photo.id,
   image:       photo.urls?.regular ?? photo.urls?.small,
   thumb:       photo.urls?.small,
+  heroImage:   photo.urls?.regular ?? photo.urls?.small,
   fullImage:   photo.urls?.full,
+  unsplashLink: photo.links?.html,
   title:       photo.alt_description ?? photo.description ?? 'Untitled',
   author:      photo.user?.name ?? 'Unknown',
   authorImage:   photo.user?.profile_image?.medium,
@@ -64,4 +66,70 @@ export const searchWallpapers = async (query, page = 1, perPage = 20) => {
 
   const data = await res.json();
   return data.results.map(normalizePhoto);
+};
+
+// ── 2b. Fetch single wallpaper by ID ──────────────────────────────
+export const fetchUnsplashPhotoById = async (id) => {
+  if (!id) return null;
+  const res = await fetch(`${BASE_URL}/photos/${id}`, { headers });
+  if (!res.ok) {
+    throw new Error(`Unsplash error ${res.status}: ${res.statusText}`);
+  }
+  const data = await res.json();
+  return normalizePhoto(data);
+};
+
+const HERO_CURATED_QUERIES = [
+  'minimal wallpaper',
+  'cinematic landscape',
+  'dreamy wallpaper',
+  'dark aesthetic',
+  'cyberpunk city',
+  'architecture wallpaper',
+  'moody landscape',
+  'ultrawide wallpaper',
+];
+
+function isLandscapeWallpaper(photo) {
+  const w = photo.width || 0;
+  const h = photo.height || 0;
+  return w > 0 && h > 0 && w >= h * 1.15;
+}
+
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ── 3. Curated hero slideshow pool (landscape, aesthetic queries) ──
+export const fetchHeroSlideshowWallpapers = async () => {
+  const queries = shuffleInPlace([...HERO_CURATED_QUERIES]).slice(0, 4);
+  const byId = new Map();
+
+  const batches = await Promise.allSettled(
+    queries.map((q) => searchWallpapers(q, 1, 6))
+  );
+
+  batches.forEach((result) => {
+    if (result.status !== 'fulfilled') return;
+    result.value.forEach((photo) => {
+      if (isLandscapeWallpaper(photo)) byId.set(photo.id, photo);
+    });
+  });
+
+  if (byId.size < 6) {
+    try {
+      const trending = await fetchTrendingWallpapers(1, 20);
+      trending.forEach((photo) => {
+        if (isLandscapeWallpaper(photo)) byId.set(photo.id, photo);
+      });
+    } catch {
+      // use whatever we have
+    }
+  }
+
+  return shuffleInPlace([...byId.values()]).slice(0, 18);
 };
