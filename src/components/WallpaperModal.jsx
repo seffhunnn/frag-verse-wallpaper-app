@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { X, Download, ExternalLink, User, Heart, Tag } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { X, Download, ExternalLink, User, Heart, Tag, AlertCircle } from 'lucide-react';
 import WallpaperCard from './WallpaperCard';
 
 const downloadWallpaper = async (url, filename) => {
@@ -28,6 +28,13 @@ const WallpaperModal = ({
   onSelectWallpaper,
   favoriteIds = [],
 }) => {
+  const [imgError, setImgError] = useState(false);
+
+  // Reset image error state when selected wallpaper changes
+  useEffect(() => {
+    setImgError(false);
+  }, [wallpaper]);
+
   useEffect(() => {
     if (!wallpaper) return;
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -177,11 +184,22 @@ const WallpaperModal = ({
                 {source === 'unsplash' ? 'Unsplash' : 'FragVerse'}
               </div>
             )}
-            <img
-              src={fullImage || image || thumb}
-              alt={title}
-              className="w-full h-full object-contain max-h-[55vh] lg:max-h-[70vh]"
-            />
+            {imgError ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center text-slate-400">
+                <AlertCircle className="w-12 h-12 text-slate-500 mb-3" />
+                <p className="font-semibold text-slate-300">Unable to load preview</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-xs">
+                  This image format could not be loaded directly. You can try downloading it to your device instead.
+                </p>
+              </div>
+            ) : (
+              <img
+                src={image || thumb || fullImage}
+                alt={title}
+                onError={() => setImgError(true)}
+                className="w-full h-full object-contain max-h-[55vh] lg:max-h-[70vh]"
+              />
+            )}
           </div>
 
           <aside className="w-full lg:w-[300px] flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--border)] overflow-y-auto p-5 space-y-5">

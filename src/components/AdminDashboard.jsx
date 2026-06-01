@@ -12,6 +12,7 @@ const AdminDashboard = ({ user, isAdmin, onModerationAction }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [processingId, setProcessingId] = useState(null);
+  const [imageErrors, setImageErrors] = useState({});
 
   const loadPending = async () => {
     setLoading(true);
@@ -150,14 +151,22 @@ const AdminDashboard = ({ user, isAdmin, onModerationAction }) => {
             >
               {/* Image Preview Container */}
               <div className="w-full sm:w-44 h-48 sm:h-auto rounded-[14px] overflow-hidden bg-[var(--surface-2)] flex-shrink-0 relative group">
-                <img 
-                  src={item.image} 
-                  alt={item.title}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+                {imageErrors[item.id] ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-slate-400 p-4 text-center">
+                    <Shield className="w-6 h-6 text-slate-600 mb-1 animate-pulse" />
+                    <span className="text-[10px]">Failed to load image</span>
+                  </div>
+                ) : (
+                  <img 
+                    src={item.image} 
+                    alt={item.title}
+                    onError={() => setImageErrors(prev => ({ ...prev, [item.id]: true }))}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                )}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
                   <a 
-                    href={item.image} 
+                    href={item.fullImage || item.image} 
                     target="_blank" 
                     rel="noopener noreferrer" 
                     className="bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg px-2.5 py-1 text-[11px] font-medium backdrop-blur-sm transition-all"

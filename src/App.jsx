@@ -11,7 +11,7 @@ import ExplorePage     from './pages/ExplorePage';
 import CategoriesPage  from './pages/CategoriesPage';
 import useWallpapers   from './hooks/useWallpapers';
 import { supabase } from './services/supabase';
-import { fetchUserWallpapers, deleteUserOrAdminWallpaper } from './services/supabaseApi';
+import { fetchUserWallpapers, deleteUserOrAdminWallpaper, getOptimizedImageUrl } from './services/supabaseApi';
 import { fetchUnsplashPhotoById } from './services/unsplashApi';
 import LoginPage       from './components/LoginPage';
 import { auth } from './services/firebase';
@@ -287,8 +287,8 @@ function App() {
               if (!error && data) {
                 const normalized = {
                   id: data.id,
-                  image: data.image_url,
-                  thumb: data.thumbnail_url || data.image_url,
+                  image: getOptimizedImageUrl(data.image_url),
+                  thumb: getOptimizedImageUrl(data.thumbnail_url || data.image_url),
                   fullImage: data.image_url,
                   title: data.title || `Wallpaper by ${data.author}`,
                   author: data.author || 'Anonymous',

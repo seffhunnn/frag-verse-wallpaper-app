@@ -1,5 +1,5 @@
 import { useState, forwardRef, useMemo, memo } from 'react';
-import { Maximize2, Trash2, Heart, Download } from 'lucide-react';
+import { Maximize2, Trash2, Heart, Download, AlertCircle } from 'lucide-react';
 
 const WallpaperCard = memo(forwardRef(({
   wallpaper = {},
@@ -25,6 +25,7 @@ const WallpaperCard = memo(forwardRef(({
   } = wallpaper;
 
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const [liked, setLiked] = useState(false);
 
   const isMasonry = layout === 'masonry';
@@ -163,7 +164,7 @@ const WallpaperCard = memo(forwardRef(({
         {/* Fixed-aspect container — prevents ALL layout shifts during & after image load */}
         <div className="relative w-full" style={stableAspect}>
           {/* Skeleton stays underneath; image fades over it */}
-          {image && (
+          {image && !imgError && (
             <div
               className="absolute inset-0 fv-skeleton rounded-[16px] transition-opacity duration-700 ease-out"
               style={{ opacity: imgLoaded ? 0 : 1, pointerEvents: 'none' }}
@@ -172,19 +173,26 @@ const WallpaperCard = memo(forwardRef(({
           )}
 
           {/* Image always absolute-fills container — no position swap, no reflow */}
-          {image ? (
+          {image && !imgError ? (
             <img
               src={image}
               alt={title}
               loading="lazy"
               decoding="async"
               onLoad={() => setImgLoaded(true)}
+              onError={() => setImgError(true)}
               className={`
                 absolute inset-0 w-full h-full object-cover fv-card-image
                 group-hover:scale-[1.03]
                 ${imgLoaded ? 'opacity-100' : 'opacity-0'}
               `}
             />
+          ) : imgError ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 rounded-[16px] p-4 text-center">
+              <AlertCircle className="w-8 h-8 text-slate-500 mb-2" />
+              <p className="text-xs font-semibold text-slate-300 truncate max-w-full px-2">{title}</p>
+              <p className="text-[10px] text-slate-500 mt-1">Unable to load image</p>
+            </div>
           ) : (
             <div className="absolute inset-0 fv-skeleton rounded-[16px]" />
           )}
@@ -228,26 +236,33 @@ const WallpaperCard = memo(forwardRef(({
         style={{ transform: 'translateZ(0)' }}
       >
         {/* Skeleton stays underneath; image fades over it */}
-        {image && (
+        {image && !imgError && (
           <div
             className="absolute inset-0 fv-skeleton transition-opacity duration-700 ease-out"
             style={{ opacity: imgLoaded ? 0 : 1, pointerEvents: 'none' }}
             aria-hidden
           />
         )}
-        {image ? (
+        {image && !imgError ? (
           <img
             src={image}
             alt={title}
             loading="lazy"
             decoding="async"
             onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
             className={`
               absolute inset-0 w-full h-full object-cover fv-card-image
               group-hover:scale-[1.04]
               ${imgLoaded ? 'opacity-100' : 'opacity-0'}
             `}
           />
+        ) : imgError ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 rounded-[16px] p-4 text-center">
+            <AlertCircle className="w-8 h-8 text-slate-500 mb-2" />
+            <p className="text-xs font-semibold text-slate-300 truncate max-w-full px-2">{title}</p>
+            <p className="text-[10px] text-slate-500 mt-1">Unable to load image</p>
+          </div>
         ) : (
           <div className="absolute inset-0 fv-skeleton" />
         )}
@@ -288,7 +303,7 @@ const WallpaperCard = memo(forwardRef(({
     >
       <div className="relative w-full min-h-[200px] overflow-hidden bg-[var(--surface-2)]">
         {/* Skeleton stays underneath; image fades over it */}
-        {image && (
+        {image && !imgError && (
           <div
             className="absolute inset-0 fv-skeleton transition-opacity duration-700 ease-out"
             style={{ opacity: imgLoaded ? 0 : 1, pointerEvents: 'none' }}
@@ -296,15 +311,22 @@ const WallpaperCard = memo(forwardRef(({
           />
         )}
 
-        {image ? (
+        {image && !imgError ? (
           <img
             src={image}
             alt={title}
             loading="lazy"
             decoding="async"
             onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
             className={`w-full min-h-[200px] object-cover fv-card-image group-hover:scale-[1.04] ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
+        ) : imgError ? (
+          <div className="w-full min-h-[200px] flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 rounded-[16px] p-4 text-center">
+            <AlertCircle className="w-8 h-8 text-slate-500 mb-2" />
+            <p className="text-xs font-semibold text-slate-300 truncate max-w-full px-2">{title}</p>
+            <p className="text-[10px] text-slate-500 mt-1">Unable to load image</p>
+          </div>
         ) : (
           <div className="w-full min-h-[200px] fv-skeleton" />
         )}

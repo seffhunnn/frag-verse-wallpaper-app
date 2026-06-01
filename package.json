@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.99.3",
     "firebase": "^12.11.0",
     "framer-motion": "^12.38.0",
+    "heic2any": "^0.0.4",
     "lucide-react": "^0.577.0",
     "playwright-core": "^1.60.0",
     "react": "^19.2.4",
