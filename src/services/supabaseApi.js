@@ -38,12 +38,28 @@ export const fetchSupabaseWallpapers = async (categoryOrQuery = null, page = 1, 
   return normalizeWallpapers(data || []);
 };
 
+/**
+ * Dynamic URL transformation for HEIC/HEIF files on Cloudinary.
+ * Keeps preview/thumbnail rendering fast and compatible, while keeping downloads original.
+ */
+export const getOptimizedImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  const isCloudinary = url.includes('res.cloudinary.com') && url.includes('/upload/');
+  if (!isCloudinary) return url;
+  const lowercaseUrl = url.toLowerCase();
+  const isHEIC = lowercaseUrl.includes('.heic') || lowercaseUrl.includes('.heif');
+  if (isHEIC) {
+    return url.replace('/upload/', '/upload/f_auto,q_auto/');
+  }
+  return url;
+};
+
 // Helper function to normalize wallpapers data uniformly
 const normalizeWallpapers = (list) => {
   return list.map(item => ({
     id: item.id || Math.random().toString(36).substr(2, 9),
-    image: item.image_url,
-    thumb: item.thumbnail_url || item.image_url,
+    image: getOptimizedImageUrl(item.image_url),
+    thumb: getOptimizedImageUrl(item.thumbnail_url || item.image_url),
     fullImage: item.image_url,
     title: item.title || "Untitled Wallpaper",
     author: item.author || 'Anonymous',
@@ -120,8 +136,8 @@ export const fetchPendingSupabaseWallpapers = async () => {
 
   return (data || []).map(item => ({
     id: item.id,
-    image: item.image_url,
-    thumb: item.image_url,
+    image: getOptimizedImageUrl(item.image_url),
+    thumb: getOptimizedImageUrl(item.image_url),
     fullImage: item.image_url,
     title: item.title || 'Untitled Wallpaper',
     author: item.author || 'Anonymous',
@@ -268,8 +284,8 @@ export const fetchUserWallpapers = async (uid) => {
 
   const normalizedPending = (pendingData || []).map(item => ({
     id: item.id,
-    image: item.image_url,
-    thumb: item.image_url,
+    image: getOptimizedImageUrl(item.image_url),
+    thumb: getOptimizedImageUrl(item.image_url),
     fullImage: item.image_url,
     title: item.title || 'Untitled Wallpaper',
     author: item.author || 'Anonymous',
@@ -285,8 +301,8 @@ export const fetchUserWallpapers = async (uid) => {
 
   const normalizedApproved = (approvedData || []).map(item => ({
     id: item.id,
-    image: item.image_url,
-    thumb: item.thumbnail_url || item.image_url,
+    image: getOptimizedImageUrl(item.image_url),
+    thumb: getOptimizedImageUrl(item.thumbnail_url || item.image_url),
     fullImage: item.image_url,
     title: item.title || 'Untitled Wallpaper',
     author: item.author || 'Anonymous',

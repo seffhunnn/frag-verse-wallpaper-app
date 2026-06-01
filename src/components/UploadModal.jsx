@@ -26,6 +26,7 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
   const [progress,    setProgress]    = useState(0);
   const [errorMsg,    setErrorMsg]    = useState('');
   const [dragging,    setDragging]    = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
 
   const fileInputRef = useRef(null);
   const successTimer = useRef(null);
@@ -39,6 +40,9 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
 
   const handleClose = useCallback(() => {
     if (status === 'uploading') return;
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
     setFile(null);
     setPreview(null);
     setTitle('');
@@ -48,8 +52,9 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
     setStatus('idle');
     setProgress(0);
     setErrorMsg('');
+    setIsConverting(false);
     onClose();
-  }, [status, onClose, user]);
+  }, [status, onClose, user, preview]);
 
   // Auto-close 3.5 s after success to let them read the pending message
   useEffect(() => {
@@ -69,17 +74,59 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, status, handleClose]);
 
-  const acceptFile = (f) => {
+  const acceptFile = async (f) => {
     if (!f) return;
-    if (!f.type.startsWith('image/')) {
-      setErrorMsg('Please select a valid image file (JPG, PNG, WEBP, etc.)');
+    
+    const fileName = f.name.toLowerCase();
+    const isHEIC = fileName.endsWith('.heic') || fileName.endsWith('.heif') || f.type === 'image/heic' || f.type === 'image/heif';
+
+    if (!isHEIC && !f.type.startsWith('image/')) {
+      setErrorMsg('Please select a valid image file (JPG, PNG, WEBP, HEIC, etc.)');
       setStatus('error');
       return;
     }
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    setStatus('selected');
-    setErrorMsg('');
+
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+
+    if (isHEIC) {
+      setIsConverting(true);
+      setErrorMsg('');
+      setStatus('idle');
+      setFile(null);
+      setPreview(null);
+      try {
+        const heic2any = (await import('heic2any')).default;
+        let blobResult = await heic2any({
+          blob: f,
+          toType: 'image/jpeg',
+          quality: 0.9
+        });
+        if (Array.isArray(blobResult)) {
+          blobResult = blobResult[0];
+        }
+        const newFileName = f.name.replace(/\.(heic|heif)$/i, '') + '.jpg';
+        const convertedFile = new File([blobResult], newFileName, {
+          type: 'image/jpeg',
+          lastModified: Date.now()
+        });
+        setFile(convertedFile);
+        setPreview(URL.createObjectURL(convertedFile));
+        setStatus('selected');
+      } catch (err) {
+        console.error("HEIC conversion failed:", err);
+        setErrorMsg('Failed to process HEIC file. Please try standard JPG or PNG.');
+        setStatus('error');
+      } finally {
+        setIsConverting(false);
+      }
+    } else {
+      setFile(f);
+      setPreview(URL.createObjectURL(f));
+      setStatus('selected');
+      setErrorMsg('');
+    }
   };
 
   // ── Drag & Drop ──────────────────────────────────────────────────
@@ -297,7 +344,7 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
           {/* ── Drop Zone ── */}
           {status !== 'success' && (
             <div
-              onClick={() => { if (status !== 'uploading') fileInputRef.current?.click(); }}
+              onClick={() => { if (status !== 'uploading' && !isConverting) fileInputRef.current?.click(); }}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
               onDrop={onDrop}
@@ -308,11 +355,24 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
                     ? 'border-violet-500/40 bg-transparent'
                     : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-dark-800/50 hover:border-violet-500/50 hover:bg-violet-500/5'
                 }
-                ${status === 'uploading' ? 'pointer-events-none' : ''}
+                ${status === 'uploading' || isConverting ? 'pointer-events-none' : ''}
               `}
               style={{ minHeight: '180px' }}
             >
-              {preview ? (
+              {isConverting ? (
+                /* Converting loader */
+                <div className="flex flex-col items-center justify-center gap-3 py-10 px-4 text-center">
+                  <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 transition-colors duration-500">
+                      Converting HEIC image...
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 transition-colors duration-500">
+                      Optimizing for web compatibility
+                    </p>
+                  </div>
+                </div>
+              ) : preview ? (
                 /* Image preview */
                 <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
                   <img
@@ -344,7 +404,7 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
                       Drop your image here
                     </p>
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 transition-colors duration-500">
-                      or <span className="text-violet-500 dark:text-violet-400 font-medium">click to browse</span> — JPG, PNG, WEBP supported
+                      or <span className="text-violet-500 dark:text-violet-400 font-medium">click to browse</span> — JPG, PNG, WEBP, HEIC supported
                     </p>
                   </div>
                 </div>
@@ -355,7 +415,7 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             className="hidden"
             onChange={onFileChange}
           />
@@ -458,7 +518,8 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
               {status !== 'uploading' && (
                 <button
                   onClick={handleClose}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-all duration-200"
+                  disabled={isConverting}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-all duration-200 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -466,7 +527,7 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
 
               <button
                 onClick={status === 'error' ? () => { setStatus(file ? 'selected' : 'idle'); setErrorMsg(''); } : handleUpload}
-                disabled={(!file && status !== 'error') || status === 'uploading'}
+                disabled={(!file && status !== 'error') || status === 'uploading' || isConverting}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
                   ${status === 'uploading'
                     ? 'bg-violet-500/40 text-white/60 cursor-wait'
@@ -481,6 +542,11 @@ const UploadModal = ({ isOpen, onClose, onUploadSuccess, user }) => {
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Uploading…
+                  </>
+                ) : isConverting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Converting…
                   </>
                 ) : status === 'error' ? (
                   <>
