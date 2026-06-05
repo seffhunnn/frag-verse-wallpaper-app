@@ -28,6 +28,17 @@ body:
       label: Additional Context
       description: Add references or screenshots if applicable.
 
+  - type: dropdown
+    attributes:
+      label: Difficulty
+      description: Select estimated implementation difficulty.
+      options:
+        - Easy
+        - Medium
+        - Hard
+    validations:
+      required: true
+
   - type: checkboxes
     attributes:
       label: Confirmation

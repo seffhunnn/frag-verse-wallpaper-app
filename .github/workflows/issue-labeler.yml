@@ -1,0 +1,37 @@
+name: Auto Label Issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+
+    steps:
+      - name: Add easy label
+        if: contains(github.event.issue.body, 'Difficulty') && contains(github.event.issue.body, 'Easy')
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: easy
+
+      - name: Add medium label
+        if: contains(github.event.issue.body, 'Difficulty') && contains(github.event.issue.body, 'Medium')
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: medium
+
+      - name: Add hard label
+        if: contains(github.event.issue.body, 'Difficulty') && contains(github.event.issue.body, 'Hard')
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: hard
+
+      - name: Add good first issue label
+        if: contains(github.event.issue.body, 'good first issue')
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: good first issue
