@@ -1,41 +1,46 @@
 name: Feature Request
-description: Suggest a new feature or enhancement for FragVerse
+description: Suggest a feature or improvement for FragVerse
 title: "[FEATURE]: "
 labels: ["enhancement"]
 
 body:
-  - type: textarea
+  - type: input
     attributes:
-      label: Feature Summary
-      description: Briefly describe the feature idea.
+      label: Feature Title
+      placeholder: Brief feature title...
     validations:
       required: true
-
-  - type: textarea
-    attributes:
-      label: Problem / Motivation
-      description: What problem does this solve?
-    validations:
-      required: true
-
-  - type: textarea
-    attributes:
-      label: Proposed Solution
-      description: Describe how you imagine the feature working.
-
-  - type: textarea
-    attributes:
-      label: Additional Context
-      description: Add references or screenshots if applicable.
 
   - type: dropdown
     attributes:
       label: Difficulty
-      description: Select estimated implementation difficulty.
       options:
         - Easy
         - Medium
         - Hard
+    validations:
+      required: true
+
+  - type: dropdown
+    attributes:
+      label: Area
+      options:
+        - UI
+        - Performance
+        - Masonry
+        - Pagination
+        - Frontend
+        - Backend
+        - Supabase
+        - Firebase
+        - Cloudinary
+        - Unsplash
+
+  - type: textarea
+    attributes:
+      label: Description
+      description: Explain the feature, motivation, screenshots, or implementation ideas.
+      placeholder: Describe the feature...
     validations:
       required: true
 

@@ -6,7 +6,7 @@ labels: ["bug"]
 body:
   - type: input
     attributes:
-      label: Short Summary
+      label: Bug Title
       placeholder: Briefly describe the issue...
     validations:
       required: true
@@ -38,15 +38,9 @@ body:
 
   - type: textarea
     attributes:
-      label: Full Details
-      description: Include reproduction steps, expected behavior, screenshots, or any additional context.
-      placeholder: |
-        Describe the issue in detail...
-
-        Steps to reproduce:
-        1.
-        2.
-        3.
+      label: Description
+      description: Include reproduction steps, expected behavior, screenshots, or additional context.
+      placeholder: Describe the issue...
     validations:
       required: true
 
