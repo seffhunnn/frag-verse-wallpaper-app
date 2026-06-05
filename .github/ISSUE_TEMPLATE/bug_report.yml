@@ -1,0 +1,56 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in FragVerse
+title: "[BUG]: "
+labels: ["bug"]
+
+body:
+  - type: textarea
+    attributes:
+      label: Bug Description
+      description: Clearly explain the issue.
+      placeholder: Describe what happened...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce
+      description: Provide steps to reproduce the issue.
+      placeholder: |
+        1. Go to...
+        2. Click on...
+        3. Observe issue...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+      description: Explain what should have happened.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Screenshots / Recordings
+      description: Add screenshots or recordings if applicable.
+
+  - type: dropdown
+    attributes:
+      label: Device Type
+      options:
+        - Desktop
+        - Mobile
+        - Tablet
+
+  - type: input
+    attributes:
+      label: Browser
+      placeholder: Chrome, Firefox, Edge, Safari...
+
+  - type: checkboxes
+    attributes:
+      label: Confirmation
+      options:
+        - label: I verified this issue does not already exist.
+          required: true
