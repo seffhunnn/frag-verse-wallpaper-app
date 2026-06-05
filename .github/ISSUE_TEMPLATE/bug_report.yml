@@ -48,6 +48,17 @@ body:
       label: Browser
       placeholder: Chrome, Firefox, Edge, Safari...
 
+  - type: dropdown
+    attributes:
+      label: Difficulty
+      description: Select estimated implementation difficulty.
+      options:
+        - Easy
+        - Medium
+        - Hard
+    validations:
+      required: true
+
   - type: checkboxes
     attributes:
       label: Confirmation
