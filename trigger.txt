@@ -1,0 +1,2 @@
+Test trigger file to verify CodeRabbit's automated PR reviews on GitHub.
+This file can be safely deleted once verified.
