@@ -4,60 +4,52 @@ title: "[BUG]: "
 labels: ["bug"]
 
 body:
-  - type: textarea
+  - type: input
     attributes:
-      label: Bug Description
-      description: Clearly explain the issue.
-      placeholder: Describe what happened...
+      label: Bug Summary
+      placeholder: Briefly describe the issue...
     validations:
       required: true
 
   - type: textarea
     attributes:
       label: Steps to Reproduce
-      description: Provide steps to reproduce the issue.
       placeholder: |
         1. Go to...
-        2. Click on...
+        2. Click...
         3. Observe issue...
     validations:
       required: true
 
-  - type: textarea
-    attributes:
-      label: Expected Behavior
-      description: Explain what should have happened.
-    validations:
-      required: true
-
-  - type: textarea
-    attributes:
-      label: Screenshots / Recordings
-      description: Add screenshots or recordings if applicable.
-
-  - type: dropdown
-    attributes:
-      label: Device Type
-      options:
-        - Desktop
-        - Mobile
-        - Tablet
-
   - type: input
     attributes:
-      label: Browser
-      placeholder: Chrome, Firefox, Edge, Safari...
+      label: Expected Behavior
+      placeholder: What should happen instead?
 
   - type: dropdown
     attributes:
       label: Difficulty
-      description: Select estimated implementation difficulty.
       options:
         - Easy
         - Medium
         - Hard
     validations:
       required: true
+
+  - type: dropdown
+    attributes:
+      label: Area
+      options:
+        - UI
+        - Performance
+        - Masonry
+        - Pagination
+        - Frontend
+        - Backend
+        - Supabase
+        - Firebase
+        - Cloudinary
+        - Unsplash
 
   - type: checkboxes
     attributes:
