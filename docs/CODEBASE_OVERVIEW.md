@@ -64,9 +64,9 @@ sequenceDiagram
     Note over CM: Converts HEIC/HEIF files to JPEG in-browser
     CM->>Cloud: uploadToCloudinary()
     Cloud-->>CM: Return secure_url
-    CM->>DB: insertSupabaseWallpaper() -> pending_wallpapers
+    CM->>DB: insertSupabaseWallpaper() to pending_wallpapers table
     DB-->>CM: Return record ID
-    CM->>User: Display success modal; reload user uploads list
+    CM->>User: Display success modal and reload user uploads list
 ```
 
 1. **HEIC Conversion**: If the user uploads a `.heic` or `.heif` image, [UploadModal.jsx](file:///d:/frag-verse-wallpaper-app/src/components/UploadModal.jsx#L93-L130) dynamically imports `heic2any` to perform client-side JPEG transcoding.
