@@ -6,25 +6,10 @@ labels: ["bug"]
 body:
   - type: input
     attributes:
-      label: Bug Summary
+      label: Short Summary
       placeholder: Briefly describe the issue...
     validations:
       required: true
-
-  - type: textarea
-    attributes:
-      label: Steps to Reproduce
-      placeholder: |
-        1. Go to...
-        2. Click...
-        3. Observe issue...
-    validations:
-      required: true
-
-  - type: input
-    attributes:
-      label: Expected Behavior
-      placeholder: What should happen instead?
 
   - type: dropdown
     attributes:
@@ -50,6 +35,20 @@ body:
         - Firebase
         - Cloudinary
         - Unsplash
+
+  - type: textarea
+    attributes:
+      label: Full Details
+      description: Include reproduction steps, expected behavior, screenshots, or any additional context.
+      placeholder: |
+        Describe the issue in detail...
+
+        Steps to reproduce:
+        1.
+        2.
+        3.
+    validations:
+      required: true
 
   - type: checkboxes
     attributes:
