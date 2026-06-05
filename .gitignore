@@ -26,3 +26,18 @@ yarn-error.log*
 *.sw?
 
 *check_page.js
+
+# ESLint
+.eslintcache
+
+# Vite
+.vite/
+
+# Testing
+coverage/
+
+# OS/System
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
