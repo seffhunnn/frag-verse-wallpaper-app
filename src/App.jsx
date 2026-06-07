@@ -18,6 +18,8 @@ import { auth } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import GlobalSearchModal from './components/GlobalSearchModal';
 import StickySearchBar   from './components/explore/StickySearchBar';
+import StartupReveal     from './components/StartupReveal';
+
 
 function App() {
   const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'mohdsaifansari8888@gmail.com'; 
@@ -30,6 +32,10 @@ function App() {
     hasMore, prependWallpaper, removeWallpaper, isReloading, sessionSeed,
     homeLoadingRef, exploreLoadingRef, categoriesLoadingRef, communityLoadingRef
   } = useWallpapers();
+
+  const [revealPhase,       setRevealPhase]       = useState(() => {
+    return sessionStorage.getItem("fragverse-intro-played") === "true" ? "completed" : "idle";
+  });
 
   const [user,              setUser]              = useState(null);
   const [activeCategory,    setActiveCategory]    = useState(null);
@@ -58,6 +64,29 @@ function App() {
   const favoritesRequestSeq = useRef(0);
   const missingFavoritesRequestSeq = useRef(0);
   const uploadsRequestSeq = useRef(0);
+
+  // Startup Reveal Animation effects
+  useEffect(() => {
+    if (revealPhase === 'completed') return;
+
+    const timerUI = setTimeout(() => {
+      setRevealPhase('ui-reveal');
+    }, 1800);
+
+    const timerGrid = setTimeout(() => {
+      setRevealPhase('grid-reveal');
+    }, 2300);
+
+    return () => {
+      clearTimeout(timerUI);
+      clearTimeout(timerGrid);
+    };
+  }, [revealPhase]);
+
+  const handleIntroComplete = useCallback(() => {
+    sessionStorage.setItem('fragverse-intro-played', 'true');
+    setRevealPhase('completed');
+  }, []);
 
   // Unified pool of all wallpapers
   const wallpapers = useMemo(() => {
@@ -915,7 +944,18 @@ function App() {
 
 
   return (
-    <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: 'var(--bg)' }}>
+    <div className={`min-h-screen transition-colors duration-300 ${
+      revealPhase === 'completed'
+        ? ''
+        : revealPhase === 'grid-reveal'
+        ? 'fv-reveal-pending fv-reveal-ui fv-reveal-grid'
+        : revealPhase === 'ui-reveal'
+        ? 'fv-reveal-pending fv-reveal-ui'
+        : 'fv-reveal-pending'
+    }`} style={{ backgroundColor: 'var(--bg)' }}>
+      {revealPhase !== 'completed' && (
+        <StartupReveal theme={theme} onComplete={handleIntroComplete} />
+      )}
       {/* ── Sidebar ── */}
       {activeNav !== 'login' && (
         <Sidebar

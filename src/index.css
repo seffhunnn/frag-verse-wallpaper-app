@@ -640,3 +640,64 @@
     --grid-gap: 10px;
   }
 }
+
+/* ── Cinematic Startup Reveal Animation Styles ────────────────── */
+.bg-radial-vignette {
+  background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.8) 100%);
+}
+.bg-radial-vignette-light {
+  background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.05) 100%);
+}
+
+/* Initial hidden states under reveal pending */
+.fv-reveal-pending {
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+.fv-reveal-pending aside {
+  opacity: 0 !important;
+  transform: translate3d(-30px, 0, 0) !important;
+}
+
+.fv-reveal-pending #sidebar-hamburger-btn {
+  opacity: 0 !important;
+  transform: scale(0.8) !important;
+}
+
+.fv-reveal-pending .fv-navbar {
+  opacity: 0 !important;
+  transform: translate3d(0, -20px, 0) !important;
+}
+
+.fv-reveal-pending main {
+  opacity: 0 !important;
+  transform: translate3d(0, 15px, 0) !important;
+}
+
+/* UI entrance transitions (played at 1.8s) */
+.fv-reveal-ui aside {
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) !important;
+  transition: opacity 1.0s cubic-bezier(0.16, 1, 0.3, 1), transform 1.0s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.fv-reveal-ui #sidebar-hamburger-btn {
+  opacity: 1 !important;
+  transform: scale(1) !important;
+  transition: opacity 1.0s cubic-bezier(0.16, 1, 0.3, 1), transform 1.0s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.fv-reveal-ui .fv-navbar {
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) !important;
+  transition: opacity 1.0s cubic-bezier(0.16, 1, 0.3, 1), transform 1.0s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Main content reveal transition (played at 2.3s) */
+.fv-reveal-grid main {
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) !important;
+  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
