@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, memo } from 'react';
-import { Search, Upload, X, LogOut, ChevronDown, ImagePlus, User } from 'lucide-react';
+import { Search, Upload, X, LogOut, ChevronDown, ImagePlus, User, Heart } from 'lucide-react';
+
 
 // ─────────────────────────────────────────────────────────────────
 // Navbar — always-visible search, Upload / Login / Sign Up actions
@@ -24,6 +25,26 @@ const Navbar = memo(({
 
           {/* ── Right Actions ── */}
           <div className="flex items-center gap-2 flex-shrink-0">
+
+            {/* GitHub Sponsors Button */}
+            <a
+              href="https://github.com/sponsors/seffhunnn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="
+                group fv-sponsor-btn
+                flex items-center gap-1.5
+                px-3.5 py-2 rounded-full
+                bg-[var(--surface-2)] border border-[var(--border)]
+                text-[var(--text-secondary)] hover:text-[var(--text-primary)]
+                text-[13px] font-semibold
+              "
+              aria-label="Sponsor seffhunnn on GitHub"
+            >
+              <Heart className="w-3.5 h-3.5 text-pink-500 fill-none group-hover:fill-pink-500 transition-all duration-200" />
+              <span>Sponsor</span>
+            </a>
+
 
             {/* Upload button (only show when authenticated) */}
             {user && (

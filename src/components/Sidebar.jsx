@@ -317,8 +317,30 @@ const Sidebar = memo(({
             </button>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[var(--border)]">
-            <div className="flex items-center justify-center gap-1">
+          <div className="mt-4 pt-3 border-t border-[var(--border)] flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center w-full px-2">
+              <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-semibold mb-1.5 select-none">
+                Support FragVerse
+              </span>
+              <a
+                href="https://github.com/sponsors/seffhunnn"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+                  group fv-sponsor-btn
+                  w-full flex items-center justify-center gap-1.5
+                  px-3.5 py-2 rounded-full
+                  bg-[var(--surface-2)] border border-[var(--border)]
+                  text-[var(--text-secondary)] hover:text-[var(--text-primary)]
+                  text-[13px] font-semibold
+                "
+                aria-label="Sponsor seffhunnn on GitHub"
+              >
+                <Heart className="w-3.5 h-3.5 text-pink-500 fill-none group-hover:fill-pink-500 transition-all duration-200" />
+                <span>Sponsor</span>
+              </a>
+            </div>
+            <div className="flex items-center justify-center gap-1 mt-1">
               {SOCIAL_ITEMS.map(item => (
                 <SidebarSocialIcon key={item.label} item={item} />
               ))}
